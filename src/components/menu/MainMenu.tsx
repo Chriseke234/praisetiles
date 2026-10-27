@@ -3,6 +3,8 @@
 import React from 'react';
 import { InstrumentType } from '@/types/game';
 import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { getGemTier } from '@/config/progression';
 
 interface MainMenuProps {
   onSelectInstrument: (instrument: InstrumentType) => void;
@@ -10,6 +12,8 @@ interface MainMenuProps {
   onVolumeChange: (vol: number) => void;
   reducedMotion: boolean;
   onToggleReducedMotion: () => void;
+  onOpenProfile: () => void;
+  onOpenAuth: () => void;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
@@ -18,8 +22,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onVolumeChange,
   reducedMotion,
   onToggleReducedMotion,
+  onOpenProfile,
+  onOpenAuth,
 }) => {
   const [showInstrumentSelect, setShowInstrumentSelect] = React.useState(false);
+  const { user, profile, progress } = useAuth();
+
+  const currentRank = progress?.gemRank || 'Quartz';
+  const tier = getGemTier(currentRank);
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between items-center p-4 sm:p-6 md:p-8 bg-[#090a0f] text-gray-100 overflow-hidden">
@@ -43,12 +53,41 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
         </div>
 
-        {/* Guest status & Quick controls */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-800/80 border border-gray-700 text-xs text-amber-300 font-medium">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Playing as Guest</span>
-          </div>
+        {/* User profile, Guest status & Quick controls */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Authenticated Profile or Guest Pill */}
+          {user && profile ? (
+            <button
+              onClick={onOpenProfile}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/50 transition glow-gold"
+            >
+              <div
+                style={{ backgroundColor: tier.colorHex }}
+                className="w-5 h-5 rounded-lg flex items-center justify-center text-black font-black text-[10px]"
+              >
+                {tier.gemRank[0]}
+              </div>
+              <span className="text-xs font-bold text-white max-w-[100px] truncate">
+                {profile.displayName}
+              </span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900/90 border border-gray-800 text-xs text-amber-300 font-medium hover:border-amber-500/40 transition"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Guest</span>
+              </button>
+              <button
+                onClick={onOpenAuth}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition shadow"
+              >
+                Sign In
+              </button>
+            </div>
+          )}
 
           {/* Sound Controls */}
           <div className="flex items-center gap-2 bg-gray-900/90 border border-gray-800 px-3 py-1.5 rounded-xl">
@@ -71,7 +110,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               value={volume}
               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
               aria-label="Master Volume"
-              className="w-16 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-14 sm:w-16 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
             />
           </div>
 

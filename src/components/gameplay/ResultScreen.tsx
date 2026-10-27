@@ -2,23 +2,29 @@
 
 import React from 'react';
 import { RunResult } from '@/types/game';
-import { RotateCcw, Home, Award, AlertOctagon, Music, Zap } from 'lucide-react';
+import { RotateCcw, Home, Award, AlertOctagon, Music, Zap, Sparkles, UserPlus } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 interface ResultScreenProps {
   result: RunResult;
   songTitle: string;
+  xpEarned?: number;
   onRetry: () => void;
   onChangeInstrument: () => void;
   onMainMenu: () => void;
+  onOpenAuth?: () => void;
 }
 
 export const ResultScreen: React.FC<ResultScreenProps> = ({
   result,
   songTitle,
+  xpEarned = 0,
   onRetry,
   onChangeInstrument,
   onMainMenu,
+  onOpenAuth,
 }) => {
+  const { isGuest } = useAuth();
   const isVictory = result.completed;
   const elapsedMin = Math.floor(result.elapsedTime / 60);
   const elapsedSec = Math.floor(result.elapsedTime % 60);
@@ -50,7 +56,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         />
 
         {/* Status Badge & Icon */}
-        <div className="relative z-10 flex flex-col items-center text-center mb-6">
+        <div className="relative z-10 flex flex-col items-center text-center mb-5">
           <div
             className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-xl ${
               isVictory
@@ -86,8 +92,21 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           </p>
         </div>
 
+        {/* XP Earned Banner */}
+        {xpEarned > 0 && (
+          <div className="relative z-10 mb-4 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300">
+            <span className="flex items-center gap-1.5 font-bold">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Progression Award
+            </span>
+            <span className="font-black font-mono text-sm text-amber-400">
+              +{xpEarned} XP
+            </span>
+          </div>
+        )}
+
         {/* Stats Grid */}
-        <div className="relative z-10 grid grid-cols-2 gap-3 mb-6">
+        <div className="relative z-10 grid grid-cols-2 gap-3 mb-5">
           {/* Total Score */}
           <div className="col-span-2 p-4 rounded-2xl bg-gray-900/80 border border-gray-800 text-center">
             <span className="text-[11px] uppercase tracking-wider text-gray-400 font-bold">
@@ -147,6 +166,20 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Guest Save Progress Prompt */}
+        {isGuest && onOpenAuth && (
+          <div className="relative z-10 mb-4 p-3 rounded-xl bg-gray-900/70 border border-gray-800 flex items-center justify-between text-xs">
+            <span className="text-gray-400">Want to save your high score and rank up?</span>
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold hover:bg-amber-500/30 transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Save Progress
+            </button>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="relative z-10 flex flex-col gap-2.5">

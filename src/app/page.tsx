@@ -5,6 +5,7 @@ import { InstrumentType, RhythmMap, RunResult } from '@/types/game';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext';
 import { SocialProvider } from '@/lib/social/SocialContext';
+import { TournamentProvider } from '@/lib/tournament/TournamentContext';
 import { MainMenu } from '@/components/menu/MainMenu';
 import { AudioUploadModal } from '@/components/setup/AudioUploadModal';
 import { RhythmMapPreview } from '@/components/setup/RhythmMapPreview';
@@ -195,7 +196,9 @@ export default function PraiseTilesApp() {
   return (
     <AuthProvider>
       <SocialProvider>
-        <PraiseTilesGame />
+        <TournamentProvider>
+          <PraiseTilesGame />
+        </TournamentProvider>
       </SocialProvider>
     </AuthProvider>
   );

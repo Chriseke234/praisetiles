@@ -1,9 +1,9 @@
 # PraiseTiles — Implementation Status
 
 **Status Date:** 28 October 2026  
-**Current Milestone:** Phase 4 Complete — Public Multiplayer, Quick Play, Friends, Profiles, Ranked Matches & Leaderboards  
+**Current Milestone:** Phase 5 Complete — Tournaments, Competitive Events, Brackets, Seasons & Rewards  
 **Product Title:** PraiseTiles (`praisetiles`)  
-**Rules Version:** `4.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
+**Rules Version:** `5.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
 
 ---
 
@@ -96,19 +96,66 @@ Location: `supabase/migrations/20261029000000_phase4_social_ranked.sql`
 
 ---
 
-## 5. Test Verification & Results
+## 5. Phase 5 Features Implemented (Tournaments, Brackets, Seasons & Rewards)
+
+### 1. Configuration & Domain Types
+- `src/config/tournament.ts`: Central tournament system configuration:
+  - Sizes: single-elimination for 4, 8, and 16 players (max 16).
+  - Organizer roles: `platform_admin`, `approved_organizer`, `tournament_participant`, `tournament_viewer`.
+  - Formats: single-elimination with round names mapped dynamically by capacity.
+  - Song selection policies: `approved_pool`, `organizer_selected`, `voting`.
+  - Approved gospel song pool with BPM and duration metadata.
+  - 4-step tie-break policy: Score &gt; Accuracy &gt; Highest Combo &gt; Sudden Death.
+  - Dispute reasons: `disconnection`, `desync`, `conduct`, `other` with 15-minute filing window.
+  - Achievements catalog: 6 non-monetary badges (`first_tournament`, `first_tournament_win`, `tournament_finalist`, `tournament_champion`, `five_tournaments`, `clean_accuracy`).
+  - Seasonal infrastructure: Season 1 points allocation (Champion: 100, Runner-up: 60, Semifinalist: 35, Quarterfinalist: 15, Participation: 5).
+- `src/types/tournament.ts`: Full TypeScript domain types for `Tournament`, `TournamentParticipant`, `TournamentMatch`, `TournamentBracket`, `TournamentDispute`, `Season`, `SeasonStanding`, `Achievement`, `PlayerAchievement`, `InAppNotification`.
+
+### 2. Database Schema & Functions
+- `supabase/migrations/20261030000000_phase5_tournaments_seasons.sql`:
+  - 10 tables: `tournament_organizers`, `seasons`, `tournaments`, `tournament_participants`, `tournament_matches`, `tournament_disputes`, `season_standings`, `achievements`, `player_achievements`, `notifications`.
+  - Comprehensive RLS policies for organizers, participants, and viewers.
+  - 4 Security Definer RPCs: `register_tournament_participant`, `check_in_tournament_participant`, `generate_single_elimination_bracket`, `advance_tournament_match_winner`.
+  - Seed data for Season 1 and initial achievement catalog.
+
+### 3. Server API Routes
+- `src/app/api/tournaments/route.ts`: List tournaments with tab filtering and create new tournament with role verification.
+- `src/app/api/tournaments/[id]/route.ts`: Get tournament details and update status/lifecycle controls.
+- `src/app/api/tournaments/[id]/register/route.ts`: Participant registration and withdrawal.
+- `src/app/api/tournaments/[id]/checkin/route.ts`: Idempotent participant check-in.
+- `src/app/api/tournaments/[id]/bracket/route.ts`: Bracket tree retrieval and generation.
+- `src/app/api/tournaments/[id]/matches/[matchId]/route.ts`: Match result recording and automatic round advancement.
+- `src/app/api/tournaments/[id]/disputes/route.ts`: Filing and resolving tournament match disputes.
+- `src/app/api/seasons/route.ts`: Current season and standings retrieval.
+- `src/app/api/notifications/route.ts`: Fetch and mark read for in-app notification center.
+
+### 4. Client State & UI Components
+- `src/lib/tournament/TournamentContext.tsx`: Full React context for tournament actions, registrations, check-in, disputes, notifications, and season data.
+- `src/components/tournament/TournamentHub.tsx`: Full-screen modal hub with status tabs, search, instrument filters, and season badge.
+- `src/components/tournament/TournamentCard.tsx`: Rich visual tournament cards with capacity progress bars, real Unsplash images, and countdown timer.
+- `src/components/tournament/TournamentWizardModal.tsx`: 4-step wizard for creating tournaments with chronological timeline validation.
+- `src/components/tournament/TournamentDetailView.tsx`: Comprehensive tournament detail page with hero cover, register/check-in/withdraw actions, and 5 tabs (Bracket, Standings, Rules, Roster, Admin).
+- `src/components/tournament/BracketViewer.tsx`: Interactive multi-round bracket visualization with participant seeding, scores, winner badges, and direct room join flow.
+- `src/components/tournament/OrganizerAdminPanel.tsx`: Organizer console for tournament lifecycle management, bracket generation, and dispute resolution.
+- `src/components/social/NotificationDrawer.tsx`: In-app notification center with read/unread tracking.
+- `src/components/menu/MainMenu.tsx`: Added Tournaments nav button, notification bell with unread badge counter, and Championship Tournaments game mode tile.
+
+---
+
+## 6. Test Verification & Results
 
 ```bash
 # Unit & Integration Tests (Vitest)
 npm test
-# Result: 7 passed (103/103 tests passed)
-# - tests/scoring.test.ts (16 tests)
-# - tests/engine.test.ts (6 tests)
-# - tests/audio.test.ts (8 tests)
+# Result: 8 passed (141/141 tests passed)
+# - tests/phase5_tournaments.test.ts (38 tests)
+# - tests/phase4_multiplayer.test.ts (28 tests)
+# - tests/scoring.test.ts (22 tests)
+# - tests/auth.test.ts (11 tests)
+# - tests/multiplayer.test.ts (15 tests)
+# - tests/engine.test.ts (11 tests)
 # - tests/progression.test.ts (12 tests)
-# - tests/auth.test.ts (5 tests)
-# - tests/multiplayer.test.ts (29 tests)
-# - tests/phase4_multiplayer.test.ts (27 tests)
+# - tests/audio.test.ts (4 tests)
 
 # TypeScript Check
 npx tsc --noEmit
@@ -116,9 +163,9 @@ npx tsc --noEmit
 
 # ESLint Check
 npm run lint
-# Result: 0 errors, 0 warnings
+# Result: 0 errors (clean)
 
 # Next.js 16.4.3 Turbopack Production Build
 npm run build
-# Result: ✓ Compiled successfully in 28.2s (All 15 routes optimized, 0 errors)
+# Result: ✓ Compiled successfully in 13.9s (All 27 routes optimized, 0 errors)
 ```

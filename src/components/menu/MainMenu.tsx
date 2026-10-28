@@ -2,15 +2,18 @@
 
 import React from 'react';
 import { InstrumentType } from '@/types/game';
-import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck, Trophy, Check, X } from 'lucide-react';
+import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck, Trophy, Check, X, Award, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocial } from '@/lib/social/SocialContext';
+import { useTournament } from '@/lib/tournament/TournamentContext';
 import { getGemTier } from '@/config/progression';
 import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
 import { PublicRoomBrowser } from '@/components/multiplayer/PublicRoomBrowser';
 import { FriendsModal } from '@/components/social/FriendsModal';
 import { LeaderboardModal } from '@/components/social/LeaderboardModal';
+import { TournamentHub } from '@/components/tournament/TournamentHub';
+import { NotificationDrawer } from '@/components/social/NotificationDrawer';
 import { useRouter } from 'next/navigation';
 
 interface MainMenuProps {
@@ -39,9 +42,12 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [showPublicRoomsModal, setShowPublicRoomsModal] = React.useState(false);
   const [showFriendsModal, setShowFriendsModal]         = React.useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = React.useState(false);
+  const [showTournamentsHub, setShowTournamentsHub]     = React.useState(false);
+  const [showNotifications, setShowNotifications]       = React.useState(false);
 
   const { user, profile, progress } = useAuth();
   const { invitations, respondInvitation } = useSocial();
+  const { unreadNotificationCount } = useTournament();
 
   const currentRank = progress?.gemRank || 'Quartz';
   const tier = getGemTier(currentRank);
@@ -69,8 +75,18 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
         </div>
 
-        {/* User profile, Guest status, Social, Ranks & Quick controls */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        {/* User profile, Guest status, Social, Ranks, Tournaments & Quick controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Tournament Arena Trigger */}
+          <button
+            onClick={() => setShowTournamentsHub(true)}
+            title="Championship Tournaments"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition glow-gold"
+          >
+            <Award className="w-4 h-4 text-amber-400" />
+            <span className="hidden lg:inline">Tournaments</span>
+          </button>
+
           {/* Leaderboard Modal Trigger */}
           <button
             onClick={() => setShowLeaderboardModal(true)}
@@ -78,7 +94,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Trophy className="w-4 h-4 text-amber-400" />
-            <span className="hidden md:inline">Ranks</span>
+            <span className="hidden lg:inline">Ranks</span>
           </button>
 
           {/* Friends & Social Hub Trigger */}
@@ -88,8 +104,20 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             className="relative p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Users className="w-4 h-4 text-cyan-400" />
-            <span className="hidden md:inline">Social</span>
+            <span className="hidden lg:inline">Social</span>
             {invitations.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
+            )}
+          </button>
+
+          {/* In-App Notifications Trigger */}
+          <button
+            onClick={() => setShowNotifications(true)}
+            title="Notifications"
+            className="relative p-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-400 hover:text-white transition"
+          >
+            <Bell className="w-4 h-4 text-gray-300" />
+            {unreadNotificationCount > 0 && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
             )}
           </button>
@@ -250,7 +278,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </button>
 
-              {/* Multiplayer (Phase 3 — Private Rooms) */}
+              {/* Multiplayer (Phase 3 — Private Rooms & Public Lobbies) */}
               <button
                 onClick={() => setShowMultiplayerModal(true)}
                 className="group relative w-full p-5 rounded-2xl bg-gradient-to-r from-cyan-600/20 via-cyan-500/10 to-gray-900/40 border border-cyan-500/40 hover:border-cyan-400 transition-all duration-200 text-left hover:scale-[1.01] active:scale-[0.99]"
@@ -266,15 +294,45 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                           Multiplayer
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">
-                          Private Rooms
+                          Rooms & Quick Play
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Create or join a private room · Nominate songs · Compete with friends.
+                        Create or join rooms · Quick Play · Ranked & Casual matchmaking.
                       </p>
                     </div>
                   </div>
                   <div className="text-cyan-400 font-semibold text-sm group-hover:translate-x-1 transition">
+                    &rarr;
+                  </div>
+                </div>
+              </button>
+
+              {/* Tournaments (Phase 5 — Single Elimination Brackets) */}
+              <button
+                onClick={() => setShowTournamentsHub(true)}
+                className="group relative w-full p-5 rounded-2xl bg-gradient-to-r from-amber-600/20 via-amber-500/10 to-gray-900/40 border border-amber-500/40 hover:border-amber-400 transition-all duration-200 text-left hover:scale-[1.01] active:scale-[0.99] glow-gold"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center group-hover:scale-110 transition">
+                      <Award className="w-6 h-6 text-amber-400 stroke-[2]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold text-white group-hover:text-amber-300 transition">
+                          Championship Tournaments
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                          Phase 5
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        4, 8 & 16-player brackets · Check-in · Placements & Seasonal Trophies.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-amber-400 font-semibold text-sm group-hover:translate-x-1 transition">
                     &rarr;
                   </div>
                 </div>
@@ -414,6 +472,19 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         isOpen={showLeaderboardModal}
         onClose={() => setShowLeaderboardModal(false)}
         onOpenAuth={onOpenAuth}
+      />
+
+      {/* Tournament Hub Modal */}
+      <TournamentHub
+        isOpen={showTournamentsHub}
+        onClose={() => setShowTournamentsHub(false)}
+        onOpenAuth={onOpenAuth}
+      />
+
+      {/* In-App Notification Drawer */}
+      <NotificationDrawer
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </div>
   );

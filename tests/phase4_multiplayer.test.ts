@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { SOCIAL_CONFIG, QuickReactionId, ReportReasonId } from '../src/config/social';
+import { SOCIAL_CONFIG, ReportReasonId } from '../src/config/social';
 import { InstrumentType } from '../src/types/game';
 import { RoomMode, MatchShareData } from '../src/types/social';
 
@@ -78,7 +78,6 @@ describe('Public Room System Constraints', () => {
 // ===========================================================================
 describe('Quick Play Matchmaking Queue Mechanics', () => {
   const {
-    HEARTBEAT_INTERVAL_MS,
     QUEUE_TIMEOUT_MS,
     INITIAL_RATING_WINDOW,
     RATING_WINDOW_EXPANSION_STEP,
@@ -295,6 +294,8 @@ describe('Social Platform Rules', () => {
     expect(status).toBe('pending');
     accept();
     expect(status).toBe('accepted');
+    decline();
+    expect(status).toBe('declined');
   });
 
   it('blocked users cannot send room invitations', () => {
@@ -344,7 +345,7 @@ describe('Room Chat & Quick Reactions Integrity', () => {
   it('enforces 1,500ms cooldown rate limit between messages', () => {
     expect(RATE_LIMIT_MS).toBe(1500);
 
-    let lastSentAt = 1000;
+    const lastSentAt = 1000;
     const canSendAt = (time: number) => time - lastSentAt >= RATE_LIMIT_MS;
 
     expect(canSendAt(1500)).toBe(false); // Only 500ms elapsed

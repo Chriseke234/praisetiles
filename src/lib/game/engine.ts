@@ -41,6 +41,8 @@ export class GameEngine {
   private isTerminated: boolean = false;
   private currentAudioTime: number = 0;
   private notesHitCount: number = 0;
+  private calibrationOffsetSec: number = 0;
+  private lastTapTimeByLane: number[] = [-1, -1, -1, -1];
 
   constructor(
     map: RhythmMap,
@@ -68,7 +70,17 @@ export class GameEngine {
     this.isTerminated = false;
     this.currentAudioTime = 0;
     this.notesHitCount = 0;
+    this.lastTapTimeByLane = [-1, -1, -1, -1];
     this.callbacks.onScoreUpdate(this.scoreState);
+  }
+
+  public setCalibrationOffset(offsetSec: number): void {
+    // Bound calibration between -150ms and +150ms
+    this.calibrationOffsetSec = Math.max(-0.150, Math.min(0.150, offsetSec));
+  }
+
+  public getCalibrationOffset(): number {
+    return this.calibrationOffsetSec;
   }
 
   public start(): void {
@@ -141,12 +153,22 @@ export class GameEngine {
   public handleLaneInput(lane: number): void {
     if (!this.isRunning || this.isTerminated) return;
 
+    const now = this.currentAudioTime;
+
+    // Deduplicate rapid touch/pointer events on the same lane within 30ms
+    const lastTap = this.lastTapTimeByLane[lane] ?? -1;
+    if (now - lastTap < 0.030) {
+      return;
+    }
+    this.lastTapTimeByLane[lane] = now;
+
     if (this.callbacks.onLaneTapEffect) {
       this.callbacks.onLaneTapEffect(lane);
     }
 
     const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
-    const now = this.currentAudioTime;
+    // Apply user audio-visual calibration offset
+    const adjustedTime = now - this.calibrationOffsetSec;
 
     // Find the earliest unhit note in this lane within valid hit window
     let candidateNote: Note | null = null;
@@ -155,7 +177,7 @@ export class GameEngine {
     for (let i = 0; i < this.notes.length; i++) {
       const note = this.notes[i];
       if (note.lane === lane && !note.hit) {
-        const diff = now - note.time;
+        const diff = adjustedTime - note.time;
         if (Math.abs(diff) <= goodWindow) {
           if (Math.abs(diff) < minDiff) {
             minDiff = Math.abs(diff);
@@ -167,7 +189,7 @@ export class GameEngine {
 
     if (candidateNote) {
       // Valid hit!
-      const diff = now - candidateNote.time;
+      const diff = adjustedTime - candidateNote.time;
       const grade = getTimingJudgement(diff);
       if (grade) {
         candidateNote.hit = true;

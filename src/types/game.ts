@@ -74,4 +74,10 @@ export interface AudioValidationResult {
   duration?: number;
   fileSize?: number;
   mimeType?: string;
+  peakAmplitude?: number;
+  rmsEnergy?: number;
+  sampleRate?: number;
+  numberOfChannels?: number;
+  isNearSilent?: boolean;
+  isClipped?: boolean;
 }

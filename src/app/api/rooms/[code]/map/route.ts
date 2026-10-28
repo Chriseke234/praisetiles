@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { SubmitMapRequest, SubmitMapResponse } from '@/types/room';
 import { RhythmMap } from '@/types/game';
+import { validateRhythmMapPlayability } from '@/lib/audio/mapValidator';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -62,10 +63,22 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  // Server-side map validation
+  // Server-side map structure validation
   if (!validateMapStructure(body.mapJson)) {
     return NextResponse.json(
       { error: 'Invalid rhythm map: missing or malformed required fields (version, duration, notes, audioFingerprint, stages)' },
+      { status: 422 }
+    );
+  }
+
+  // Server-side playability validation
+  const playabilityReport = validateRhythmMapPlayability(body.mapJson);
+  if (!playabilityReport.valid) {
+    return NextResponse.json(
+      {
+        error: `Rhythm map failed playability validation: ${playabilityReport.errors.join('; ')}`,
+        validationErrors: playabilityReport.errors,
+      },
       { status: 422 }
     );
   }

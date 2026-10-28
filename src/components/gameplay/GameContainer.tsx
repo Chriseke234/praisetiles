@@ -14,7 +14,7 @@ import { GameAudioPlayer } from '@/lib/audio/player';
 import { getCurrentStarStage, createInitialScoreState } from '@/lib/game/scoring';
 import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
-import { Volume2, VolumeX, Star, Zap, ArrowLeft } from 'lucide-react';
+import { Volume2, VolumeX, Star, Zap, ArrowLeft, Sliders } from 'lucide-react';
 
 interface GameContainerProps {
   map: RhythmMap;
@@ -49,10 +49,29 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     lane: number;
     key: number;
   } | null>(null);
+  const [calibrationMs, setCalibrationMs] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('praisetiles_calibration_ms');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val)) return val;
+      }
+    }
+    return 0;
+  });
+  const [showCalibration, setShowCalibration] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const activeLanesTimeoutRef = useRef<NodeJS.Timeout[]>([]);
+  const initialCalibrationRef = useRef<number>(calibrationMs);
+
+  // Update calibration offset on active engine dynamically
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setCalibrationOffset(calibrationMs / 1000);
+    }
+  }, [calibrationMs]);
 
   // Initialize engine
   useEffect(() => {
@@ -92,6 +111,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       },
     });
 
+    engine.setCalibrationOffset(initialCalibrationRef.current / 1000);
     engineRef.current = engine;
 
     return () => {
@@ -239,6 +259,20 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             </span>
           </div>
 
+          {/* Calibration button */}
+          <button
+            onClick={() => setShowCalibration((prev) => !prev)}
+            aria-label="Audio/Input Calibration"
+            title={`Timing Offset: ${calibrationMs >= 0 ? '+' : ''}${calibrationMs}ms`}
+            className={`p-1.5 rounded-lg transition ${
+              calibrationMs !== 0
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'bg-gray-900 hover:bg-gray-800 text-gray-400'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+
           {/* Volume toggle */}
           <button
             onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
@@ -253,6 +287,39 @@ export const GameContainer: React.FC<GameContainerProps> = ({
           </button>
         </div>
       </header>
+
+      {/* Timing Calibration Popup */}
+      {showCalibration && (
+        <div className="absolute top-14 right-4 z-50 p-4 rounded-2xl bg-gray-950/95 border border-gray-800 shadow-2xl backdrop-blur-md w-64 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Latency Calibration</span>
+            <span className="text-xs font-mono font-bold text-amber-400">
+              {calibrationMs >= 0 ? `+${calibrationMs}` : calibrationMs} ms
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400">
+            Adjust timing offset to compensate for Bluetooth audio or display delay.
+          </p>
+          <input
+            type="range"
+            min={-150}
+            max={150}
+            step={5}
+            value={calibrationMs}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              setCalibrationMs(val);
+              if (engineRef.current) engineRef.current.setCalibrationOffset(val / 1000);
+              if (typeof window !== 'undefined') localStorage.setItem('praisetiles_calibration_ms', val.toString());
+            }}
+            className="w-full accent-amber-500 cursor-pointer"
+          />
+          <div className="flex justify-between text-[9px] text-gray-500 font-mono">
+            <span>-150ms (Earlier)</span>
+            <span>+150ms (Later)</span>
+          </div>
+        </div>
+      )}
 
       {/* Main 4-Lane Arena Container */}
       <main className="relative flex-1 w-full max-w-lg mx-auto overflow-hidden">

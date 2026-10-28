@@ -1,19 +1,27 @@
 /**
- * Lightweight Onset & Rhythm-Map Analyzer for PraiseTiles
- * Rule version: 1.0.0
+ * Advanced Multi-Band Onset & Rhythm-Map Analyzer for PraiseTiles
+ * Rule version: 2.0.0 (Phase 6 Audio Intelligence Engine)
  * 
  * ALGORITHM & HONESTY STATEMENT:
- * This analyzer performs lightweight energy-flux transient detection directly in the browser.
- * It detects prominent rhythmic energy peaks and maps them to a synchronized 4-lane grid
- * with progressive 3-stage density (Star 1, 2, and 3).
+ * This analyzer performs 2-band sub-band spectral flux transient detection directly in the browser.
+ * It separates low-frequency energy (kick drums, bass transients < 250 Hz) from high-frequency
+ * percussive/melodic attacks (> 250 Hz), computes localized adaptive thresholds over a sliding window,
+ * suppresses duplicate onsets, and deterministically maps events into a 4-lane grid with 3-star density progression.
  * 
  * IMPORTANT: It does NOT perform polyphonic melody transcription or pitch-to-note extraction.
  * Generated note patterns represent beat-aligned rhythmic structures derived from the audio's
- * dynamic transients, providing a playable arcade rhythm game experience.
+ * dynamic transients, providing a responsive and musically engaging arcade rhythm game experience.
  */
 
 import { GAMEPLAY_CONFIG } from '@/config/gameplay';
-import { Note, RhythmMap } from '@/types/game';
+import { AUDIO_CONFIG } from '@/config/audio';
+import {
+  DifficultyProfileName,
+  NoteV2,
+  OnsetCandidate,
+  RhythmMapMetrics,
+  RhythmMapV2,
+} from '@/types/audio';
 
 /**
  * Creates a deterministic fingerprint string for the audio track based on duration,
@@ -35,117 +43,290 @@ export function generateAudioFingerprint(buffer: AudioBuffer): string {
   }
 
   const hexHash = (hash >>> 0).toString(16).padStart(8, '0');
-  return `pt-v1-${Math.round(duration)}s-${sampleRate}hz-${hexHash}`;
+  return `pt-v2-${Math.round(duration)}s-${sampleRate}hz-${hexHash}`;
 }
 
 /**
- * Analyzes decoded AudioBuffer and produces a versioned 4-lane RhythmMap
- * with 3-star progression.
+ * Computes a deterministic checksum for a rhythm map's core content.
+ */
+export function calculateMapChecksum(map: {
+  version: string;
+  audioFingerprint: string;
+  duration: number;
+  totalNotes: number;
+  notes: { id: string; time: number; lane: number }[];
+}): string {
+  let hash = 0x811c9dc5;
+  const seedStr = `${map.version}:${map.audioFingerprint}:${Math.round(map.duration * 100)}:${map.totalNotes}`;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash ^= seedStr.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  for (const n of map.notes) {
+    const noteStr = `${n.lane}@${Math.round(n.time * 1000)}`;
+    for (let i = 0; i < noteStr.length; i++) {
+      hash ^= noteStr.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193);
+    }
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Estimates overall song tempo (BPM) via autocorrelation of the energy flux signal.
+ * Returns estimated BPM (e.g. 120) or null if no strong periodicity is detected.
+ */
+export function estimateTempoFromFlux(
+  flux: Float32Array,
+  hopDurationSec: number
+): number | null {
+  if (flux.length < 100) return null;
+
+  // Search range: 60 BPM to 180 BPM
+  const minLag = Math.floor((60 / 180) / hopDurationSec);
+  const maxLag = Math.floor((60 / 60) / hopDurationSec);
+
+  let bestLag = -1;
+  let maxCorr = 0;
+
+  for (let lag = minLag; lag <= maxLag && lag < flux.length / 2; lag++) {
+    let corr = 0;
+    const count = Math.min(flux.length - lag, 1000); // Sample up to 1000 frames
+    for (let i = 0; i < count; i++) {
+      corr += flux[i] * flux[i + lag];
+    }
+    if (corr > maxCorr) {
+      maxCorr = corr;
+      bestLag = lag;
+    }
+  }
+
+  if (bestLag > 0) {
+    const periodSec = bestLag * hopDurationSec;
+    const bpm = Math.round(60 / periodSec);
+    if (bpm >= 60 && bpm <= 180) {
+      return bpm;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Analyzes decoded AudioBuffer using 2-Band Spectral Flux with adaptive local windowing
+ * and produces a versioned 4-lane RhythmMapV2 with 3-star progression.
  */
 export function generateRhythmMapFromAudio(
   buffer: AudioBuffer,
-  songTitle: string = 'Authorized Track'
-): RhythmMap {
+  songTitle: string = 'Authorized Track',
+  difficulty: DifficultyProfileName = 'standard'
+): RhythmMapV2 {
   const duration = buffer.duration;
   const channelData = buffer.getChannelData(0);
   const sampleRate = buffer.sampleRate;
+  const profile = AUDIO_CONFIG.DIFFICULTY_PROFILES[difficulty] ?? AUDIO_CONFIG.DIFFICULTY_PROFILES.standard;
 
   const star1End = duration * GAMEPLAY_CONFIG.STAGE_FRACTIONS.STAR_1;
   const star2End = duration * GAMEPLAY_CONFIG.STAGE_FRACTIONS.STAR_2;
   const star3End = duration * GAMEPLAY_CONFIG.STAGE_FRACTIONS.STAR_3;
 
-  // Frame size: 50ms frames for transient analysis
-  const frameDuration = 0.05; // 50ms
+  // 1. DSP Setup: Frame size (40ms) & Hop size (20ms)
+  const frameDuration = AUDIO_CONFIG.DSP.FRAME_DURATION_SEC;
+  const hopDuration = AUDIO_CONFIG.DSP.HOP_DURATION_SEC;
   const frameSize = Math.floor(sampleRate * frameDuration);
-  const numFrames = Math.floor(channelData.length / frameSize);
+  const hopSize = Math.floor(sampleRate * hopDuration);
+  const numFrames = Math.floor((channelData.length - frameSize) / hopSize);
 
-  // 1. Calculate RMS energy per frame
-  const energies: number[] = new Float32Array(numFrames) as unknown as number[];
+  if (numFrames <= 0) {
+    throw new Error('Audio track is too short for rhythm analysis.');
+  }
+
+  // 2. Multi-Band Separation:
+  // Low-pass filter (~250 Hz) for kick/bass transients using a single-pole IIR filter
+  // RC = 1 / (2 * pi * cutoff); alpha = dt / (RC + dt)
+  const cutoffHz = AUDIO_CONFIG.DSP.SUB_BAND_CROSSOVER_HZ;
+  const dt = 1.0 / sampleRate;
+  const rc = 1.0 / (2.0 * Math.PI * cutoffHz);
+  const alpha = dt / (rc + dt);
+
+  const lowData = new Float32Array(channelData.length);
+  let lastLow = 0;
+  for (let i = 0; i < channelData.length; i++) {
+    lastLow += alpha * (channelData[i] - lastLow);
+    lowData[i] = lastLow;
+  }
+
+  // 3. Compute Low-band and High-band energy envelopes
+  const lowEnergies = new Float32Array(numFrames);
+  const highEnergies = new Float32Array(numFrames);
+
   for (let f = 0; f < numFrames; f++) {
-    const start = f * frameSize;
-    let sumSquares = 0;
+    const start = f * hopSize;
+    let sumLow = 0;
+    let sumHigh = 0;
+
     for (let s = 0; s < frameSize; s++) {
-      const sample = channelData[start + s];
-      sumSquares += sample * sample;
+      const idx = start + s;
+      const lowSample = lowData[idx];
+      const highSample = channelData[idx] - lowSample; // High-pass component
+      sumLow += lowSample * lowSample;
+      sumHigh += highSample * highSample;
     }
-    energies[f] = Math.sqrt(sumSquares / frameSize);
+
+    lowEnergies[f] = Math.sqrt(sumLow / frameSize);
+    highEnergies[f] = Math.sqrt(sumHigh / frameSize);
   }
 
-  // 2. Calculate spectral/energy flux (half-wave rectified difference)
-  const flux: number[] = new Float32Array(numFrames) as unknown as number[];
-  let meanFlux = 0;
+  // 4. Compute 2-Band Spectral Flux (Half-Wave Rectified Difference)
+  const combinedFlux = new Float32Array(numFrames);
+  const bandIdentities: ('low' | 'high' | 'full')[] = new Array(numFrames);
+
   for (let f = 1; f < numFrames; f++) {
-    const diff = energies[f] - energies[f - 1];
-    flux[f] = diff > 0 ? diff : 0;
-    meanFlux += flux[f];
+    const diffLow = Math.max(0, lowEnergies[f] - lowEnergies[f - 1]);
+    const diffHigh = Math.max(0, highEnergies[f] - highEnergies[f - 1]);
+
+    const weightedFlux =
+      diffLow * AUDIO_CONFIG.DSP.LOW_BAND_WEIGHT +
+      diffHigh * AUDIO_CONFIG.DSP.HIGH_BAND_WEIGHT;
+
+    combinedFlux[f] = weightedFlux;
+
+    if (diffLow > diffHigh * 1.5) {
+      bandIdentities[f] = 'low';
+    } else if (diffHigh > diffLow * 1.5) {
+      bandIdentities[f] = 'high';
+    } else {
+      bandIdentities[f] = 'full';
+    }
   }
-  meanFlux /= Math.max(1, numFrames - 1);
 
-  // Calculate standard deviation of flux for adaptive thresholding
-  let varSum = 0;
-  for (let f = 1; f < numFrames; f++) {
-    const d = flux[f] - meanFlux;
-    varSum += d * d;
-  }
-  const stdDevFlux = Math.sqrt(varSum / Math.max(1, numFrames - 1));
+  // Estimate tempo from combined flux
+  const estimatedBpm = estimateTempoFromFlux(combinedFlux, hopDuration);
 
-  // 3. Peak detection with adaptive threshold
-  // Base threshold: mean + 0.8 * stdDev
-  const threshold = meanFlux + 0.8 * stdDevFlux;
+  // 5. Local Adaptive Window Thresholding & Peak Detection
+  // Window size: 800ms / 20ms hop = ~40 frames
+  const windowRadius = Math.max(3, Math.floor((AUDIO_CONFIG.DSP.LOCAL_WINDOW_SEC / hopDuration) / 2));
+  const sensitivity = profile.adaptiveThresholdSensitivity;
 
-  const rawOnsets: { time: number; energy: number }[] = [];
-  for (let f = 2; f < numFrames - 2; f++) {
-    const val = flux[f];
-    if (
-      val > threshold &&
-      val >= flux[f - 1] &&
-      val >= flux[f - 2] &&
-      val >= flux[f + 1] &&
-      val >= flux[f + 2]
-    ) {
-      const time = f * frameDuration;
-      // Skip the first 1.5 seconds to let the player prepare after countdown
-      if (time >= 1.5 && time <= duration - 1.0) {
-        rawOnsets.push({ time, energy: val });
+  const candidateOnsets: OnsetCandidate[] = [];
+
+  for (let f = windowRadius; f < numFrames - windowRadius; f++) {
+    const val = combinedFlux[f];
+    if (val <= 0.0001) continue;
+
+    // Check if this frame is a local peak within ±2 frames
+    const isLocalPeak =
+      val >= combinedFlux[f - 1] &&
+      val >= combinedFlux[f - 2] &&
+      val >= combinedFlux[f + 1] &&
+      val >= combinedFlux[f + 2];
+
+    if (!isLocalPeak) continue;
+
+    // Calculate local mean and standard deviation across sliding window
+    let localSum = 0;
+    for (let w = f - windowRadius; w <= f + windowRadius; w++) {
+      localSum += combinedFlux[w];
+    }
+    const localMean = localSum / (2 * windowRadius + 1);
+
+    let localVariance = 0;
+    for (let w = f - windowRadius; w <= f + windowRadius; w++) {
+      const diff = combinedFlux[w] - localMean;
+      localVariance += diff * diff;
+    }
+    const localStdDev = Math.sqrt(localVariance / (2 * windowRadius + 1));
+
+    // Adaptive threshold for this frame
+    const threshold = localMean + sensitivity * localStdDev;
+
+    if (val > threshold) {
+      const time = f * hopDuration;
+      // Skip prepare padding at start and exit padding at end
+      if (
+        time >= AUDIO_CONFIG.DSP.INITIAL_PREPARE_PADDING_SEC &&
+        time <= duration - AUDIO_CONFIG.DSP.END_PADDING_SEC
+      ) {
+        // Calculate confidence score (normalized difference above threshold)
+        const confidence = Math.min(1.0, (val - threshold) / (localStdDev > 0 ? localStdDev * 2 : 1.0));
+
+        candidateOnsets.push({
+          time,
+          energy: val,
+          confidence: Math.round(confidence * 100) / 100,
+          bandType: bandIdentities[f],
+        });
       }
     }
   }
 
-  // 4. Map onsets into 3-Star density stages across 4 lanes
-  const notes: Note[] = [];
+  // 6. Duplicate Onset Suppression:
+  // Discard candidates that occur within 120ms of a previous higher-energy onset
+  const suppressionWindow = AUDIO_CONFIG.DSP.DUPLICATE_SUPPRESSION_WINDOW_SEC;
+  const filteredCandidates: OnsetCandidate[] = [];
+
+  for (let i = 0; i < candidateOnsets.length; i++) {
+    const current = candidateOnsets[i];
+    let isSuppressed = false;
+
+    // Look back at accepted candidates
+    for (let j = filteredCandidates.length - 1; j >= 0; j--) {
+      const prev = filteredCandidates[j];
+      if (current.time - prev.time < suppressionWindow) {
+        if (prev.energy >= current.energy) {
+          isSuppressed = true;
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    if (!isSuppressed) {
+      filteredCandidates.push(current);
+    }
+  }
+
+  // 7. Map Onsets into 3-Star Density Stages across 4 Lanes
+  const notes: NoteV2[] = [];
   let noteIndex = 0;
   let lastNoteTime = 0;
   let lastLane = 1;
 
-  for (const onset of rawOnsets) {
-    const time = onset.time;
-    const stage =
-      time < star1End ? 1 : time < star2End ? 2 : 3;
+  for (const candidate of filteredCandidates) {
+    const time = candidate.time;
+    const stage = time < star1End ? 1 : time < star2End ? 2 : 3;
 
-    // Minimum interval between notes based on stage density:
-    // Star 1: >= 0.70s minimum interval (spacious, introductory)
-    // Star 2: >= 0.40s minimum interval (moderate, upbeat)
-    // Star 3: >= 0.22s minimum interval (fast praise runs)
-    const minInterval = stage === 1 ? 0.70 : stage === 2 ? 0.40 : 0.22;
+    // Stage min interval derived from active difficulty profile
+    const minInterval =
+      stage === 1
+        ? profile.minIntervalStar1Sec
+        : stage === 2
+        ? profile.minIntervalStar2Sec
+        : profile.minIntervalStar3Sec;
 
     if (time - lastNoteTime < minInterval) {
       continue;
     }
 
-    // Lane selection logic:
-    // For Star 1: focus primarily on inner lanes 1 & 2 for beginner comfort
-    // For Star 2: spread to lanes 0, 1, 2, 3
-    // For Star 3: dynamic full-fretboard/four-lane patterns
-    let lane: number;
-    if (stage === 1) {
-      lane = lastLane === 1 ? 2 : 1;
-    } else {
-      // Pick a lane different from the immediate previous lane
-      const candidates = [0, 1, 2, 3].filter((l) => l !== lastLane);
-      // Deterministic choice based on time and index for consistency
-      const pickIdx = (Math.floor(time * 10) + noteIndex) % candidates.length;
-      lane = candidates[pickIdx];
-    }
+    // Lane Selection based on stage and allowed lanes
+    const allowedLanes =
+      stage === 1
+        ? profile.allowedLanesStar1
+        : stage === 2
+        ? profile.allowedLanesStar2
+        : profile.allowedLanesStar3;
+
+    // Avoid picking identical lane consecutively when possible
+    const candidates = allowedLanes.filter((l) => l !== lastLane);
+    const validChoices = candidates.length > 0 ? candidates : allowedLanes;
+
+    // Deterministic selection based on candidate time, note index, and band
+    const bandOffset = candidate.bandType === 'low' ? 0 : candidate.bandType === 'high' ? 2 : 1;
+    const pickIdx = (Math.floor(time * 10) + noteIndex + bandOffset) % validChoices.length;
+    const lane = validChoices[pickIdx];
 
     notes.push({
       id: `n-${noteIndex++}`,
@@ -153,41 +334,89 @@ export function generateRhythmMapFromAudio(
       time: Math.round(time * 1000) / 1000,
       hit: false,
       grade: null,
+      confidence: candidate.confidence,
+      bandType: candidate.bandType,
     });
 
     lastNoteTime = time;
     lastLane = lane;
   }
 
-  // Fallback: If track has extremely quiet/subtle transients and fewer than 15 notes were found,
-  // synthesize standard musical beat grid based on 120 BPM defaults
-  if (notes.length < 15) {
+  // 8. Fallback for Extremely Sparse / Ambient Tracks
+  // If track has fewer than MIN_TOTAL_NOTES, synthesize musically placed beats
+  if (notes.length < AUDIO_CONFIG.VALIDATION.MIN_TOTAL_NOTES) {
     notes.length = 0;
     noteIndex = 0;
     lastLane = 0;
-    const beatInterval = 0.5; // 120 BPM = 0.5s per beat
+    const fallbackBpm = estimatedBpm ?? 120;
+    const beatInterval = 60 / fallbackBpm;
     let t = 2.0;
+
     while (t < duration - 1.0) {
       const stage = t < star1End ? 1 : t < star2End ? 2 : 3;
       const step = stage === 1 ? beatInterval * 2 : stage === 2 ? beatInterval : beatInterval * 0.75;
-      
-      const lane = (lastLane + 1) % 4;
+      const allowedLanes = stage === 1 ? profile.allowedLanesStar1 : [0, 1, 2, 3];
+      const lane = allowedLanes[(lastLane + 1) % allowedLanes.length];
+
       notes.push({
         id: `fb-${noteIndex++}`,
         lane,
         time: Math.round(t * 1000) / 1000,
         hit: false,
         grade: null,
+        confidence: 0.7,
+        bandType: 'full',
       });
+
       lastLane = lane;
       t += step;
     }
   }
 
+  // 9. Compute Metrics
+  const laneCounts = [0, 0, 0, 0];
+  let minIntervalFound = Infinity;
+
+  for (let i = 0; i < notes.length; i++) {
+    laneCounts[notes[i].lane]++;
+    if (i > 0) {
+      const diff = notes[i].time - notes[i - 1].time;
+      if (diff < minIntervalFound) minIntervalFound = diff;
+    }
+  }
+
+  const laneDistribution: [number, number, number, number] = [
+    Math.round((laneCounts[0] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[1] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[2] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[3] / Math.max(1, notes.length)) * 1000) / 10,
+  ];
+
+  const avgNps = Math.round((notes.length / Math.max(1, duration)) * 10) / 10;
   const fingerprint = generateAudioFingerprint(buffer);
 
+  const mapMetadata = {
+    version: '2.0.0' as const,
+    audioFingerprint: fingerprint,
+    duration,
+    totalNotes: notes.length,
+    notes,
+  };
+
+  const checksum = calculateMapChecksum(mapMetadata);
+
+  const metrics: RhythmMapMetrics = {
+    avgNotesPerSecond: avgNps,
+    peakNotesPerSecond: Math.round((1 / Math.max(0.1, minIntervalFound)) * 10) / 10,
+    minNoteIntervalSec: Math.round(minIntervalFound * 1000) / 1000,
+    laneDistribution,
+    estimatedBpm,
+  };
+
   return {
-    version: GAMEPLAY_CONFIG.RULES_VERSION,
+    version: '2.0.0',
+    mapId: `map-${fingerprint}-${difficulty}`,
+    algorithmVersion: AUDIO_CONFIG.ALGORITHM_VERSION,
     audioFingerprint: fingerprint,
     songTitle,
     duration,
@@ -198,5 +427,10 @@ export function generateRhythmMapFromAudio(
       star2End: Math.round(star2End * 100) / 100,
       star3End: Math.round(star3End * 100) / 100,
     },
+    difficultyProfile: difficulty,
+    metrics,
+    validationStatus: 'valid',
+    integrityChecksum: checksum,
+    createdAt: new Date().toISOString(),
   };
 }

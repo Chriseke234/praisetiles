@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { InstrumentType } from '@/types/game';
-import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck, Trophy, Check, X, Award, Bell } from 'lucide-react';
+import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck, Trophy, Check, X, Award, Bell, Activity } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocial } from '@/lib/social/SocialContext';
 import { useTournament } from '@/lib/tournament/TournamentContext';
@@ -14,6 +14,7 @@ import { FriendsModal } from '@/components/social/FriendsModal';
 import { LeaderboardModal } from '@/components/social/LeaderboardModal';
 import { TournamentHub } from '@/components/tournament/TournamentHub';
 import { NotificationDrawer } from '@/components/social/NotificationDrawer';
+import { AudioEvaluationTool } from '@/components/dev/AudioEvaluationTool';
 import { useRouter } from 'next/navigation';
 
 interface MainMenuProps {
@@ -44,6 +45,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [showLeaderboardModal, setShowLeaderboardModal] = React.useState(false);
   const [showTournamentsHub, setShowTournamentsHub]     = React.useState(false);
   const [showNotifications, setShowNotifications]       = React.useState(false);
+  const [showAudioEval, setShowAudioEval]               = React.useState(false);
 
   const { user, profile, progress } = useAuth();
   const { invitations, respondInvitation } = useSocial();
@@ -419,12 +421,22 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       {/* Footer Info */}
       <footer className="relative z-10 w-full max-w-4xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
         <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
-        <p className="text-gray-400">
-          Touch or Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">D</kbd>{' '}
-          <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">F</kbd>{' '}
-          <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">J</kbd>{' '}
-          <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-gray-400">
+            Touch or Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">D</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">F</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">J</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
+          </p>
+          <button
+            onClick={() => setShowAudioEval(true)}
+            className="text-[11px] text-gray-500 hover:text-cyan-400 transition flex items-center gap-1"
+            title="Audio Intelligence Diagnostics"
+          >
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Audio Diagnostics</span>
+          </button>
+        </div>
       </footer>
 
       {/* Multiplayer Main Modal */}
@@ -485,6 +497,12 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <NotificationDrawer
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
+      />
+
+      {/* Internal Audio Evaluation & Diagnostics Tool */}
+      <AudioEvaluationTool
+        isOpen={showAudioEval}
+        onClose={() => setShowAudioEval(false)}
       />
     </div>
   );

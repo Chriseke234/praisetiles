@@ -55,18 +55,25 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
               {/* Subtle vertical center guide line */}
               <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-gray-800/40 pointer-events-none" />
 
+              {/* Active Lane Hit Beam */}
+              {isActive && (
+                <div
+                  className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-cyan-500/35 via-cyan-500/10 to-transparent pointer-events-none animate-pulse"
+                />
+              )}
+
               {/* Lane Hit Zone at Bottom */}
               <div
                 className={`relative z-20 w-full h-[18%] flex flex-col items-center justify-center border-t-2 transition-all ${
                   isActive
-                    ? 'border-cyan-400 bg-cyan-500/30 glow-cyan'
-                    : 'border-cyan-500/40 bg-gray-900/60'
+                    ? 'border-cyan-400 bg-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.6)] scale-[0.98]'
+                    : 'border-cyan-500/40 bg-gray-900/80 hover:bg-gray-850'
                 }`}
               >
-                <span className="text-base sm:text-lg font-black text-white/90">
+                <span className="text-base sm:text-lg font-black text-white/95 drop-shadow">
                   {laneKeys[lane]}
                 </span>
-                <span className="text-[9px] uppercase tracking-wider text-cyan-300/80 font-bold hidden sm:inline">
+                <span className="text-[9px] uppercase tracking-wider text-cyan-300 font-extrabold hidden sm:inline">
                   Tap
                 </span>
               </div>

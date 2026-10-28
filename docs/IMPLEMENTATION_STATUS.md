@@ -1,9 +1,9 @@
 # PraiseTiles — Implementation Status
 
 **Status Date:** 28 October 2026  
-**Current Milestone:** Phase 5 Complete — Tournaments, Competitive Events, Brackets, Seasons & Rewards  
+**Current Milestone:** Phase 6 Complete — Advanced Audio Intelligence, Rhythm-Map Quality & Gameplay Depth  
 **Product Title:** PraiseTiles (`praisetiles`)  
-**Rules Version:** `5.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
+**Rules Version:** `6.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
 
 ---
 
@@ -142,20 +142,67 @@ Location: `supabase/migrations/20261029000000_phase4_social_ranked.sql`
 
 ---
 
-## 6. Test Verification & Results
+## 6. Phase 6 Features Implemented (Advanced Audio Intelligence, Rhythm-Map Quality & Gameplay Depth)
+
+### 1. Audio Preprocessing & Validation Hardening
+- `src/lib/audio/validator.ts`:
+  - Silence / near-silence detection (RMS &lt; 0.001, peak amplitude &lt; 0.005).
+  - Widespread clipping detection (&gt; 15% samples clipped at &ge; 0.999).
+  - Cancellation signal support (`AbortSignal`).
+  - Diagnostic metrics returned in `AudioValidationResult` (`peakAmplitude`, `rmsEnergy`, `isNearSilent`, `isClipped`, `sampleRate`, `numberOfChannels`).
+
+### 2. Multi-Band Spectral Flux Onset Detection & RhythmMap v2.0
+- `src/config/audio.ts`: Version `2.0.0` audio configuration with 40ms frame size, 20ms hop size, 250 Hz crossover, 800ms local adaptive window, and 120ms duplicate suppression window.
+- `src/types/audio.ts`: Complete types for `DifficultyProfile`, `RhythmMapV2`, `NoteV2`, `RhythmMapMetrics`, `AudioAnalysisDiagnostics`.
+- `src/lib/audio/analyzer.ts`:
+  - 2-Band Sub-band spectral flux: single-pole IIR low-pass filter isolating kick & bass (&lt; 250 Hz) and high-pass isolating percussive/melodic attacks (&gt; 250 Hz).
+  - Sliding-window adaptive thresholding (`localMean + sensitivity * localStdDev`).
+  - Duplicate onset suppression window (120ms).
+  - Confidence scoring per candidate note (`0.0` - `1.0`).
+  - Advisory tempo estimation via autocorrelation of the energy flux curve.
+  - Deterministic FNV-1a checksum generation.
+
+### 3. Playability & Integrity Validation Engine
+- `src/lib/audio/mapValidator.ts`:
+  - 7 playability rules: duration bounding, monotonic timestamp ordering, min 15 notes, min 100ms note spacing, max density cap (&le; 8 nps in 5s windows), lane balance (&le; 55% per lane), and difficulty spike limit (&le; 3x density increase).
+- `src/app/api/rooms/[code]/map/route.ts`:
+  - Updated server-side validation to enforce playability checks on all multiplayer and tournament maps before storing in Supabase.
+
+### 4. Gameplay Presentation & Responsiveness
+- `src/lib/game/engine.ts`:
+  - Configurable audio-visual calibration offset (`±150ms`) for Bluetooth and mobile latency compensation.
+  - Input event deduplication window (`30ms`) preventing touch/click double-firing on hybrid devices.
+- `src/components/gameplay/GameContainer.tsx`:
+  - Added latency calibration popup slider (`-150ms` to `+150ms`) in top bar with persistence in `localStorage`.
+- `src/components/gameplay/PianoTilesView.tsx`:
+  - Enhanced neon key illumination, hit beams, and floating hit splashes.
+- `src/components/gameplay/GuitarTilesView.tsx`:
+  - Enhanced fretboard strings with active vibration pulse and circular arcade gem notes.
+
+### 5. Developer Audio Evaluation Tool
+- `src/components/dev/AudioEvaluationTool.tsx`:
+  - Dev-only evaluation console with HTML5 Canvas waveform & 3-Star stage boundary visualization.
+  - Interactive candidate onset inspector with live difficulty profile switcher (`beginner`, `standard`, `advanced`).
+  - Playability validation inspector and non-sensitive diagnostic JSON exporter.
+  - Accessible via "Audio Diagnostics" button in `MainMenu.tsx` footer.
+
+---
+
+## 7. Test Verification & Results
 
 ```bash
 # Unit & Integration Tests (Vitest)
 npm test
-# Result: 8 passed (141/141 tests passed)
-# - tests/phase5_tournaments.test.ts (38 tests)
-# - tests/phase4_multiplayer.test.ts (28 tests)
-# - tests/scoring.test.ts (22 tests)
-# - tests/auth.test.ts (11 tests)
-# - tests/multiplayer.test.ts (15 tests)
-# - tests/engine.test.ts (11 tests)
+# Result: 9 passed (194/194 tests passed)
+# - tests/phase6_audio_intelligence.test.ts (22 tests)
+# - tests/audio.test.ts (8 tests)
+# - tests/phase5_tournaments.test.ts (69 tests)
+# - tests/scoring.test.ts (16 tests)
+# - tests/phase4_multiplayer.test.ts (27 tests)
 # - tests/progression.test.ts (12 tests)
-# - tests/audio.test.ts (4 tests)
+# - tests/auth.test.ts (5 tests)
+# - tests/engine.test.ts (6 tests)
+# - tests/multiplayer.test.ts (29 tests)
 
 # TypeScript Check
 npx tsc --noEmit
@@ -167,5 +214,5 @@ npm run lint
 
 # Next.js 16.4.3 Turbopack Production Build
 npm run build
-# Result: ✓ Compiled successfully in 13.9s (All 27 routes optimized, 0 errors)
+# Result: ✓ Compiled successfully in 14.1s (All 23 routes optimized, 0 errors)
 ```

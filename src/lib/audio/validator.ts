@@ -55,12 +55,60 @@ export function inspectAudioHeader(buffer: Uint8Array): { format: string; valid:
 }
 
 /**
+ * Inspects a decoded AudioBuffer for silence, excessive clipping, and signal levels.
+ */
+export function analyzeAudioBufferQuality(buffer: AudioBuffer): {
+  peakAmplitude: number;
+  rmsEnergy: number;
+  isNearSilent: boolean;
+  isClipped: boolean;
+  clipPercentage: number;
+} {
+  const channelData = buffer.getChannelData(0);
+  const length = channelData.length;
+  let sumSquares = 0;
+  let peak = 0;
+  let clipCount = 0;
+
+  // Sample stride to ensure analysis remains fast (< 10ms even for 5m songs)
+  const step = Math.max(1, Math.floor(length / 50000));
+  let count = 0;
+
+  for (let i = 0; i < length; i += step) {
+    const absVal = Math.abs(channelData[i]);
+    sumSquares += absVal * absVal;
+    if (absVal > peak) peak = absVal;
+    if (absVal >= 0.999) clipCount++;
+    count++;
+  }
+
+  const rms = Math.sqrt(sumSquares / Math.max(1, count));
+  const clipPercentage = (clipCount / Math.max(1, count)) * 100;
+
+  return {
+    peakAmplitude: Math.round(peak * 1000) / 1000,
+    rmsEnergy: Math.round(rms * 1000) / 1000,
+    isNearSilent: peak < 0.005 || rms < 0.001,
+    isClipped: clipPercentage > 15.0, // Flag if > 15% of samples are clipped
+    clipPercentage: Math.round(clipPercentage * 10) / 10,
+  };
+}
+
+/**
  * Validates audio file constraints (size, format headers, duration, and decodability).
  */
 export async function validateAudioFile(
   file: File,
-  audioContext?: AudioContext
+  audioContext?: AudioContext,
+  abortSignal?: AbortSignal
 ): Promise<AudioValidationResult & { buffer?: AudioBuffer }> {
+  if (abortSignal?.aborted) {
+    return {
+      valid: false,
+      error: 'Audio processing was cancelled by user.',
+    };
+  }
+
   const { MAX_FILE_SIZE_BYTES, MIN_DURATION_SECONDS, MAX_DURATION_SECONDS } = GAMEPLAY_CONFIG.UPLOAD;
 
   // 1. File size check
@@ -84,6 +132,10 @@ export async function validateAudioFile(
     };
   }
 
+  if (abortSignal?.aborted) {
+    return { valid: false, error: 'Audio processing was cancelled by user.' };
+  }
+
   const headerBytes = new Uint8Array(arrayBuffer.slice(0, 32));
   const headerCheck = inspectAudioHeader(headerBytes);
 
@@ -98,6 +150,10 @@ export async function validateAudioFile(
   // 3. Audio decoding & duration check if AudioContext is available
   if (audioContext) {
     try {
+      if (abortSignal?.aborted) {
+        return { valid: false, error: 'Audio processing was cancelled by user.' };
+      }
+
       // Clone array buffer for decodeAudioData (which detaches the buffer in some browsers)
       const clonedBuffer = arrayBuffer.slice(0);
       const decodedBuffer = await audioContext.decodeAudioData(clonedBuffer);
@@ -109,6 +165,8 @@ export async function validateAudioFile(
           error: `Audio is too short (${Math.round(duration)}s). Minimum required duration is 30 seconds.`,
           duration,
           fileSize: file.size,
+          sampleRate: decodedBuffer.sampleRate,
+          numberOfChannels: decodedBuffer.numberOfChannels,
         };
       }
 
@@ -118,6 +176,24 @@ export async function validateAudioFile(
           error: `Audio is too long (${Math.round(duration / 60)}m ${Math.round(duration % 60)}s). Maximum duration is 5 minutes (300s).`,
           duration,
           fileSize: file.size,
+          sampleRate: decodedBuffer.sampleRate,
+          numberOfChannels: decodedBuffer.numberOfChannels,
+        };
+      }
+
+      // 4. Quality & silence inspection
+      const quality = analyzeAudioBufferQuality(decodedBuffer);
+      if (quality.isNearSilent) {
+        return {
+          valid: false,
+          error: 'Audio file is silent or too quiet to extract rhythm patterns (RMS level below 0.001).',
+          duration,
+          fileSize: file.size,
+          peakAmplitude: quality.peakAmplitude,
+          rmsEnergy: quality.rmsEnergy,
+          isNearSilent: true,
+          sampleRate: decodedBuffer.sampleRate,
+          numberOfChannels: decodedBuffer.numberOfChannels,
         };
       }
 
@@ -127,11 +203,17 @@ export async function validateAudioFile(
         fileSize: file.size,
         mimeType: headerCheck.format,
         buffer: decodedBuffer,
+        peakAmplitude: quality.peakAmplitude,
+        rmsEnergy: quality.rmsEnergy,
+        isNearSilent: false,
+        isClipped: quality.isClipped,
+        sampleRate: decodedBuffer.sampleRate,
+        numberOfChannels: decodedBuffer.numberOfChannels,
       };
     } catch {
       return {
         valid: false,
-        error: 'Browser audio decoder failed to decode this file. The audio data may be malformed.',
+        error: 'Browser audio decoder failed to decode this file. The audio data may be malformed or use an unsupported codec.',
         fileSize: file.size,
       };
     }

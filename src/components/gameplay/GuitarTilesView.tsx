@@ -66,11 +66,18 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                 }`}
               />
 
+              {/* String vibration hit beam */}
+              {isActive && (
+                <div
+                  className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-amber-500/30 via-yellow-500/10 to-transparent pointer-events-none animate-pulse"
+                />
+              )}
+
               {/* Fret Button Hit Zone */}
               <div
                 className={`relative z-20 w-full h-[18%] flex flex-col items-center justify-center border-t-2 transition-all ${
                   isActive
-                    ? 'border-yellow-400 bg-amber-500/40 glow-gold scale-[0.98]'
+                    ? 'border-yellow-400 bg-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.6)] scale-[0.98]'
                     : 'border-amber-600/40 bg-gradient-to-t from-black to-amber-950/60'
                 }`}
               >
@@ -86,7 +93,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                     {laneKeys[lane]}
                   </span>
                 </div>
-                <span className="text-[8px] uppercase tracking-wider text-amber-400/80 font-bold mt-0.5 hidden sm:inline">
+                <span className="text-[8px] uppercase tracking-wider text-amber-400/90 font-black mt-0.5 hidden sm:inline">
                   Fret {lane + 1}
                 </span>
               </div>

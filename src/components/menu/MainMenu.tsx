@@ -5,6 +5,7 @@ import { InstrumentType } from '@/types/game';
 import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { getGemTier } from '@/config/progression';
+import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 
 interface MainMenuProps {
   onSelectInstrument: (instrument: InstrumentType) => void;
@@ -26,6 +27,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onOpenAuth,
 }) => {
   const [showInstrumentSelect, setShowInstrumentSelect] = React.useState(false);
+  const [showMultiplayerModal, setShowMultiplayerModal] = React.useState(false);
   const { user, profile, progress } = useAuth();
 
   const currentRank = progress?.gemRank || 'Quartz';
@@ -178,32 +180,35 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </button>
 
-              {/* Multiplayer (Coming Soon as specified in GDD) */}
-              <div
-                aria-disabled="true"
-                className="w-full p-5 rounded-2xl bg-gray-900/40 border border-gray-800/80 text-left opacity-60 cursor-not-allowed"
+              {/* Multiplayer (Phase 3 — Private Rooms) */}
+              <button
+                onClick={() => setShowMultiplayerModal(true)}
+                className="group relative w-full p-5 rounded-2xl bg-gradient-to-r from-cyan-600/20 via-cyan-500/10 to-gray-900/40 border border-cyan-500/40 hover:border-cyan-400 transition-all duration-200 text-left hover:scale-[1.01] active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-gray-400">
-                      <Users className="w-6 h-6 stroke-[2]" />
+                    <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center group-hover:scale-110 transition">
+                      <Users className="w-6 h-6 text-cyan-400 stroke-[2]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xl font-bold text-gray-300">
+                        <span className="text-xl font-bold text-white group-hover:text-cyan-300 transition">
                           Multiplayer
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-cyan-400 border border-cyan-500/30 uppercase">
-                          Coming Soon
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">
+                          Private Rooms
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Shared room battles, song voting, and real-time community tournaments.
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Create or join a private room · Nominate songs · Compete with friends.
                       </p>
                     </div>
                   </div>
+                  <div className="text-cyan-400 font-semibold text-sm group-hover:translate-x-1 transition">
+                    &rarr;
+                  </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         ) : (
@@ -293,6 +298,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
         </p>
       </footer>
+
+      {/* Multiplayer Modal */}
+      <MultiplayerModal
+        isOpen={showMultiplayerModal}
+        onClose={() => setShowMultiplayerModal(false)}
+        onOpenAuth={onOpenAuth}
+      />
     </div>
   );
 };

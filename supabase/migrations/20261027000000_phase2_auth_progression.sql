@@ -2,6 +2,10 @@
 -- Migration: 20261027000000_phase2_auth_progression.sql
 -- Description: Sets up profiles, player_progress, player_stats, match_history, RLS, and secure match processing function.
 
+-- ============================================================================
+-- BLOCK 1: TABLES AND INDEXES
+-- ============================================================================
+
 -- 1. Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -15,7 +19,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   CONSTRAINT username_format_check CHECK (username ~ '^[a-zA-Z0-9_]+$')
 );
 
--- Case-insensitive index on username for quick uniqueness lookups
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_lower_idx ON public.profiles (lower(username));
 
 -- 2. Player Progress Table
@@ -65,7 +68,10 @@ CREATE TABLE IF NOT EXISTS public.match_history (
 
 CREATE INDEX IF NOT EXISTS match_history_user_id_idx ON public.match_history (user_id, created_at DESC);
 
--- 5. Row Level Security (RLS) Setup
+-- ============================================================================
+-- BLOCK 2: ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_stats ENABLE ROW LEVEL SECURITY;
@@ -114,23 +120,22 @@ CREATE POLICY "Users can insert match records for themselves"
   ON public.match_history FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- 6. Trigger to automatically initialize profile, progress, and stats on new auth.users signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-DECLARE
-  initial_username TEXT;
-BEGIN
-  -- Default username derived from metadata or email prefix, sanitized
-  initial_username := COALESCE(
-    NEW.raw_user_meta_data->>'username',
-    'praiser_' || substr(NEW.id::text, 1, 8)
-  );
+-- ============================================================================
+-- BLOCK 3: AUTH TRIGGER FOR AUTOMATIC PROFILE INITIALIZATION
+-- ============================================================================
 
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $trigger$
+BEGIN
   INSERT INTO public.profiles (id, username, display_name, avatar_url, is_public)
   VALUES (
     NEW.id,
-    initial_username,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', initial_username),
+    COALESCE(NEW.raw_user_meta_data->>'username', 'praiser_' || substr(NEW.id::text, 1, 8)),
+    COALESCE(NEW.raw_user_meta_data->>'display_name', COALESCE(NEW.raw_user_meta_data->>'username', 'praiser_' || substr(NEW.id::text, 1, 8))),
     NEW.raw_user_meta_data->>'avatar_url',
     true
   )
@@ -146,15 +151,17 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$trigger$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 7. Secure Server Function to Process Match Result & Update Progression
--- Evaluates idempotency, updates match_history, player_stats, XP, and 3-factor gem rank promotions
+-- ============================================================================
+-- BLOCK 4: SECURE MATCH RESULT PROCESSING FUNCTION
+-- ============================================================================
+
 CREATE OR REPLACE FUNCTION public.record_match_result(
   p_match_id UUID,
   p_instrument TEXT,
@@ -168,17 +175,20 @@ CREATE OR REPLACE FUNCTION public.record_match_result(
   p_failure_reason TEXT DEFAULT NULL,
   p_rules_version TEXT DEFAULT '1.0.0'
 )
-RETURNS JSONB AS $$
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $func$
 DECLARE
   v_user_id UUID;
   v_existing_id UUID;
-  v_xp_earned INTEGER := 0;
+  v_xp_earned INTEGER;
   v_current_xp INTEGER;
   v_current_level INTEGER;
   v_current_rank TEXT;
   v_qualifying_count INTEGER;
   v_new_rank TEXT;
-  v_is_qualifying BOOLEAN := false;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
@@ -188,7 +198,6 @@ BEGIN
   -- 1. Idempotency Check: Prevent duplicate submissions
   SELECT id INTO v_existing_id FROM public.match_history WHERE id = p_match_id;
   IF v_existing_id IS NOT NULL THEN
-    -- Return existing status without applying changes again
     SELECT xp, level, gem_rank INTO v_current_xp, v_current_level, v_current_rank
     FROM public.player_progress WHERE user_id = v_user_id;
 
@@ -196,9 +205,9 @@ BEGIN
       'status', 'duplicate',
       'match_id', p_match_id,
       'xp_earned', 0,
-      'xp', v_current_xp,
-      'level', v_current_level,
-      'gem_rank', v_current_rank
+      'xp', COALESCE(v_current_xp, 0),
+      'level', COALESCE(v_current_level, 1),
+      'gem_rank', COALESCE(v_current_rank, 'Quartz')
     );
   END IF;
 
@@ -213,18 +222,15 @@ BEGIN
     p_failure_reason, p_rules_version, now()
   );
 
-  -- 3. Calculate XP
-  -- Completed runs award base XP weighted by accuracy, combo, and score
-  -- Failed runs award minimal participation XP only if elapsed time >= 15s to prevent farming
-  IF p_completed THEN
-    v_xp_earned := ROUND(100 * (p_accuracy / 100.0) + (p_highest_combo * 0.5) + (p_score / 1000.0));
-  ELSE
-    IF p_elapsed_time >= 15.0 THEN
-      v_xp_earned := 5;
+  -- 3. Calculate XP using clean CASE expressions
+  v_xp_earned := CASE
+    WHEN p_completed THEN
+      ROUND(100.0 * (p_accuracy / 100.0) + (p_highest_combo * 0.5) + (p_score / 1000.0))::INTEGER
+    WHEN p_elapsed_time >= 15.0 THEN
+      5
     ELSE
-      v_xp_earned := 0;
-    END IF;
-  END IF;
+      0
+  END;
 
   -- 4. Update player_stats
   UPDATE public.player_stats
@@ -232,7 +238,7 @@ BEGIN
     total_attempts = total_attempts + 1,
     completed_songs = completed_songs + (CASE WHEN p_completed THEN 1 ELSE 0 END),
     best_score = GREATEST(best_score, (CASE WHEN p_completed THEN p_score ELSE 0 END)),
-    best_accuracy = GREATEST(best_accuracy, (CASE WHEN p_completed THEN p_accuracy ELSE 0 END)),
+    best_accuracy = GREATEST(best_accuracy, (CASE WHEN p_completed THEN p_accuracy ELSE 0.0 END)),
     highest_combo = GREATEST(highest_combo, p_highest_combo),
     piano_attempts = piano_attempts + (CASE WHEN p_instrument = 'piano' THEN 1 ELSE 0 END),
     piano_completed = piano_completed + (CASE WHEN p_instrument = 'piano' AND p_completed THEN 1 ELSE 0 END),
@@ -244,49 +250,40 @@ BEGIN
   WHERE user_id = v_user_id;
 
   -- 5. Fetch current progression
-  SELECT xp, level, gem_rank, qualifying_completed_songs
+  SELECT COALESCE(xp, 0), COALESCE(level, 1), COALESCE(gem_rank, 'Quartz'), COALESCE(qualifying_completed_songs, 0)
   INTO v_current_xp, v_current_level, v_current_rank, v_qualifying_count
   FROM public.player_progress WHERE user_id = v_user_id;
 
   v_current_xp := v_current_xp + v_xp_earned;
   v_current_level := FLOOR(SQRT(v_current_xp / 100.0)) + 1;
 
-  -- Check if this run is a qualifying completed song for current rank
-  -- Promotion Requirements:
-  -- Quartz -> Jade: 80% accuracy, 3 qualifying songs, 300 XP
-  -- Jade -> Sapphire: 85% accuracy, 5 qualifying songs, 700 XP
-  -- Sapphire -> Ruby: 90% accuracy, 7 qualifying songs, 1500 XP
-  -- Ruby -> Diamond: 95% accuracy, 10 qualifying songs, 3000 XP
-  IF p_completed THEN
-    IF v_current_rank = 'Quartz' AND p_accuracy >= 80.0 THEN
-      v_is_qualifying := true;
-    ELSIF v_current_rank = 'Jade' AND p_accuracy >= 85.0 THEN
-      v_is_qualifying := true;
-    ELSIF v_current_rank = 'Sapphire' AND p_accuracy >= 90.0 THEN
-      v_is_qualifying := true;
-    ELSIF v_current_rank = 'Ruby' AND p_accuracy >= 95.0 THEN
-      v_is_qualifying := true;
-    END IF;
+  -- 6. Add to qualifying count (using CASE, zero IF statements)
+  v_qualifying_count := v_qualifying_count + (
+    CASE
+      WHEN p_completed AND (
+        (v_current_rank = 'Quartz' AND p_accuracy >= 80.0) OR
+        (v_current_rank = 'Jade' AND p_accuracy >= 85.0) OR
+        (v_current_rank = 'Sapphire' AND p_accuracy >= 90.0) OR
+        (v_current_rank = 'Ruby' AND p_accuracy >= 95.0)
+      ) THEN 1
+      ELSE 0
+    END
+  );
 
-    IF v_is_qualifying THEN
-      v_qualifying_count := v_qualifying_count + 1;
-    END IF;
-  END IF;
+  -- 7. Evaluate 3-factor rank promotion (using CASE)
+  v_new_rank := CASE
+    WHEN v_current_rank = 'Quartz' AND v_current_xp >= 300 AND v_qualifying_count >= 3 THEN 'Jade'
+    WHEN v_current_rank = 'Jade' AND v_current_xp >= 700 AND v_qualifying_count >= 5 THEN 'Sapphire'
+    WHEN v_current_rank = 'Sapphire' AND v_current_xp >= 1500 AND v_qualifying_count >= 7 THEN 'Ruby'
+    WHEN v_current_rank = 'Ruby' AND v_current_xp >= 3000 AND v_qualifying_count >= 10 THEN 'Diamond'
+    ELSE v_current_rank
+  END;
 
-  -- Evaluate 3-factor rank promotion
-  v_new_rank := v_current_rank;
-  IF v_current_rank = 'Quartz' AND v_current_xp >= 300 AND v_qualifying_count >= 3 THEN
-    v_new_rank := 'Jade';
-    v_qualifying_count := 0; -- reset qualifying counter for next tier
-  ELSIF v_current_rank = 'Jade' AND v_current_xp >= 700 AND v_qualifying_count >= 5 THEN
-    v_new_rank := 'Sapphire';
-    v_qualifying_count := 0;
-  ELSIF v_current_rank = 'Sapphire' AND v_current_xp >= 1500 AND v_qualifying_count >= 7 THEN
-    v_new_rank := 'Ruby';
-    v_qualifying_count := 0;
-  ELSIF v_current_rank = 'Ruby' AND v_current_xp >= 3000 AND v_qualifying_count >= 10 THEN
-    v_new_rank := 'Diamond';
-  END IF;
+  -- Reset qualifying count on promotion
+  v_qualifying_count := CASE
+    WHEN v_new_rank <> v_current_rank AND v_new_rank <> 'Diamond' THEN 0
+    ELSE v_qualifying_count
+  END;
 
   -- Update player_progress
   UPDATE public.player_progress
@@ -309,4 +306,4 @@ BEGIN
     'promoted', (v_new_rank <> v_current_rank)
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$func$;

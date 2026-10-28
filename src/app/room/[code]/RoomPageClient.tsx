@@ -10,6 +10,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomProvider, useRoom } from '@/lib/multiplayer/RoomContext';
+import { ChatProvider } from '@/lib/multiplayer/ChatContext';
 import { RoomLobby } from '@/components/multiplayer/RoomLobby';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -68,10 +69,12 @@ function RoomJoiner({ inviteCode }: RoomPageClientProps) {
   if (!roomState) return null;
 
   return (
-    <RoomLobby
-      inviteCode={inviteCode}
-      onLeave={() => router.push('/')}
-    />
+    <ChatProvider roomId={roomState.id}>
+      <RoomLobby
+        inviteCode={inviteCode}
+        onLeave={() => router.push('/')}
+      />
+    </ChatProvider>
   );
 }
 

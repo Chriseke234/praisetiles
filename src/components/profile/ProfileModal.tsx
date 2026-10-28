@@ -29,8 +29,35 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose,
   onOpenAuth,
 }) => {
-  const { profile, progress, stats, guestMatches, isGuest, signOut } = useAuth();
+  const { user, profile, progress, stats, guestMatches, isGuest, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'piano' | 'guitar' | 'history'>('overview');
+  const [compRating, setCompRating] = useState<number>(1000);
+  const [compWins, setCompWins] = useState<number>(0);
+  const [compMatches, setCompMatches] = useState<number>(0);
+  const [isProvisional, setIsProvisional] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    if (user && isOpen) {
+      import('@/lib/supabase/client').then(({ getSupabaseBrowserClient }) => {
+        const sb = getSupabaseBrowserClient();
+        if (sb) {
+          sb.from('competitive_ratings')
+            .select('rating, ranked_wins, ranked_matches_played, provisional')
+            .eq('user_id', user.id)
+            .eq('season_id', 'season-1')
+            .maybeSingle()
+            .then(({ data }) => {
+              if (data) {
+                setCompRating(data.rating ?? 1000);
+                setCompWins(data.ranked_wins ?? 0);
+                setCompMatches(data.ranked_matches_played ?? 0);
+                setIsProvisional(data.provisional ?? true);
+              }
+            });
+        }
+      });
+    }
+  }, [user, isOpen]);
 
   if (!isOpen) return null;
 
@@ -137,6 +164,32 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Competitive Rating Card */}
+          <div className="p-3.5 rounded-2xl bg-gray-900/60 border border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-white">Competitive Rating</span>
+                  {isProvisional && (
+                    <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded">
+                      Provisional
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-500">
+                  {compWins} Wins · {compMatches} Matches · Season 1
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-base font-black text-amber-300 tabular-nums">{compRating}</span>
+              <p className="text-[9px] uppercase font-bold text-gray-500">Elo</p>
             </div>
           </div>
 

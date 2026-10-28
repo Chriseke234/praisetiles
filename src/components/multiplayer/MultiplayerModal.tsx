@@ -7,16 +7,18 @@
  */
 
 import React, { useState } from 'react';
-import { X, Plus, LogIn, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { X, Plus, LogIn, Lock, Loader2, AlertCircle, Zap, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { InstrumentType } from '@/types/game';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface MultiplayerModalProps {
-  isOpen:     boolean;
-  onClose:    () => void;
-  onOpenAuth: () => void;
+  isOpen:              boolean;
+  onClose:             () => void;
+  onOpenAuth:          () => void;
+  onOpenQuickPlay:     () => void;
+  onOpenPublicLobbies: () => void;
 }
 
 type ModalView = 'main' | 'create' | 'join';
@@ -30,6 +32,8 @@ export const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
   isOpen,
   onClose,
   onOpenAuth,
+  onOpenQuickPlay,
+  onOpenPublicLobbies,
 }) => {
   const { user, isSupabaseAvailable } = useAuth();
   const router = useRouter();
@@ -158,32 +162,54 @@ export const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
           {user && isSupabaseAvailable && view === 'main' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
-                onClick={() => setView('create')}
-                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-gray-900 border border-gray-700
-                  hover:border-amber-500/60 hover:bg-amber-500/5 transition group"
+                onClick={() => { handleClose(); onOpenQuickPlay(); }}
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/40 hover:border-amber-400 hover:bg-amber-500/15 transition group text-left"
               >
-                <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center
-                  group-hover:scale-110 transition">
-                  <Plus className="w-6 h-6 text-amber-400" />
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center group-hover:scale-110 transition">
+                  <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-bold text-white">Create Room</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Host a private match</p>
+                  <p className="text-sm font-bold text-white">Quick Play</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Casual &amp; Ranked Matchmaking</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { handleClose(); onOpenPublicLobbies(); }}
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 hover:border-cyan-400 hover:bg-cyan-500/15 transition group text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center group-hover:scale-110 transition">
+                  <Users className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-white">Public Lobbies</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Browse 8–16 player rooms</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setView('create')}
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-gray-900 border border-gray-800 hover:border-gray-700 hover:bg-gray-800/60 transition group text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center group-hover:scale-110 transition">
+                  <Plus className="w-5 h-5 text-gray-300" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-white">Create Private</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Host invite-only room</p>
                 </div>
               </button>
 
               <button
                 onClick={() => setView('join')}
-                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-gray-900 border border-gray-700
-                  hover:border-cyan-500/60 hover:bg-cyan-500/5 transition group"
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-gray-900 border border-gray-800 hover:border-gray-700 hover:bg-gray-800/60 transition group text-left"
               >
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center
-                  group-hover:scale-110 transition">
-                  <LogIn className="w-6 h-6 text-cyan-400" />
+                <div className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center group-hover:scale-110 transition">
+                  <LogIn className="w-5 h-5 text-gray-300" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-bold text-white">Join Room</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Enter an invite code</p>
+                  <p className="text-sm font-bold text-white">Join Code</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Enter 8-character invite</p>
                 </div>
               </button>
             </div>

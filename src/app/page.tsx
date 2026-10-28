@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { InstrumentType, RhythmMap, RunResult } from '@/types/game';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthContext';
+import { SocialProvider } from '@/lib/social/SocialContext';
 import { MainMenu } from '@/components/menu/MainMenu';
 import { AudioUploadModal } from '@/components/setup/AudioUploadModal';
 import { RhythmMapPreview } from '@/components/setup/RhythmMapPreview';
@@ -193,7 +194,9 @@ function PraiseTilesGame() {
 export default function PraiseTilesApp() {
   return (
     <AuthProvider>
-      <PraiseTilesGame />
+      <SocialProvider>
+        <PraiseTilesGame />
+      </SocialProvider>
     </AuthProvider>
   );
 }

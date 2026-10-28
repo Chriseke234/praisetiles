@@ -2,10 +2,16 @@
 
 import React from 'react';
 import { InstrumentType } from '@/types/game';
-import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck } from 'lucide-react';
+import { Volume2, VolumeX, Music, Flame, Users, Sparkles, ShieldCheck, Trophy, Check, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useSocial } from '@/lib/social/SocialContext';
 import { getGemTier } from '@/config/progression';
 import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
+import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
+import { PublicRoomBrowser } from '@/components/multiplayer/PublicRoomBrowser';
+import { FriendsModal } from '@/components/social/FriendsModal';
+import { LeaderboardModal } from '@/components/social/LeaderboardModal';
+import { useRouter } from 'next/navigation';
 
 interface MainMenuProps {
   onSelectInstrument: (instrument: InstrumentType) => void;
@@ -26,12 +32,20 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onOpenProfile,
   onOpenAuth,
 }) => {
+  const router = useRouter();
   const [showInstrumentSelect, setShowInstrumentSelect] = React.useState(false);
   const [showMultiplayerModal, setShowMultiplayerModal] = React.useState(false);
+  const [showQuickPlayModal, setShowQuickPlayModal]     = React.useState(false);
+  const [showPublicRoomsModal, setShowPublicRoomsModal] = React.useState(false);
+  const [showFriendsModal, setShowFriendsModal]         = React.useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = React.useState(false);
+
   const { user, profile, progress } = useAuth();
+  const { invitations, respondInvitation } = useSocial();
 
   const currentRank = progress?.gemRank || 'Quartz';
   const tier = getGemTier(currentRank);
+  const pendingInvite = invitations[0];
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between items-center p-4 sm:p-6 md:p-8 bg-[#090a0f] text-gray-100 overflow-hidden">
@@ -55,8 +69,31 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
         </div>
 
-        {/* User profile, Guest status & Quick controls */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* User profile, Guest status, Social, Ranks & Quick controls */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Leaderboard Modal Trigger */}
+          <button
+            onClick={() => setShowLeaderboardModal(true)}
+            title="Ranked Leaderboards"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition"
+          >
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <span className="hidden md:inline">Ranks</span>
+          </button>
+
+          {/* Friends & Social Hub Trigger */}
+          <button
+            onClick={() => setShowFriendsModal(true)}
+            title="Social & Friends"
+            className="relative p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition"
+          >
+            <Users className="w-4 h-4 text-cyan-400" />
+            <span className="hidden md:inline">Social</span>
+            {invitations.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
+            )}
+          </button>
+
           {/* Authenticated Profile or Guest Pill */}
           {user && profile ? (
             <button
@@ -130,6 +167,39 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </button>
         </div>
       </header>
+
+      {/* In-app Pending Room Invitation Banner */}
+      {pendingInvite && (
+        <aside aria-label="Room Invitation" className="relative z-20 w-full max-w-xl mx-auto mt-4 px-4 py-2.5 rounded-xl bg-cyan-950/70 border border-cyan-500/40 text-white flex items-center justify-between gap-3 shadow-lg backdrop-blur-sm animate-fadeIn">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+            <p className="text-xs text-gray-200 truncate">
+              <strong className="text-cyan-300">{pendingInvite.senderDisplayName}</strong> invited you to play{' '}
+              <span className="capitalize text-amber-300">{pendingInvite.instrument}</span> in room{' '}
+              <span className="font-mono text-cyan-200 font-bold">{pendingInvite.inviteCode}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={async () => {
+                await respondInvitation(pendingInvite.id, 'accept');
+                router.push(`/room/${pendingInvite.inviteCode}`);
+              }}
+              className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black transition"
+              title="Accept Invitation"
+            >
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            </button>
+            <button
+              onClick={() => respondInvitation(pendingInvite.id, 'decline')}
+              className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-rose-400 transition"
+              title="Decline Invitation"
+            >
+              <X className="w-3.5 h-3.5 stroke-[2.5]" />
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Main Hero & Menu */}
       <main className="relative z-10 w-full max-w-xl flex flex-col items-center justify-center my-auto py-8 text-center">
@@ -299,10 +369,50 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </p>
       </footer>
 
-      {/* Multiplayer Modal */}
+      {/* Multiplayer Main Modal */}
       <MultiplayerModal
         isOpen={showMultiplayerModal}
         onClose={() => setShowMultiplayerModal(false)}
+        onOpenAuth={onOpenAuth}
+        onOpenQuickPlay={() => {
+          setShowMultiplayerModal(false);
+          setShowQuickPlayModal(true);
+        }}
+        onOpenPublicLobbies={() => {
+          setShowMultiplayerModal(false);
+          setShowPublicRoomsModal(true);
+        }}
+      />
+
+      {/* Quick Play Matchmaking Modal */}
+      <QuickPlayModal
+        isOpen={showQuickPlayModal}
+        onClose={() => setShowQuickPlayModal(false)}
+        onOpenAuth={onOpenAuth}
+      />
+
+      {/* Public Rooms Browser Modal */}
+      <PublicRoomBrowser
+        isOpen={showPublicRoomsModal}
+        onClose={() => setShowPublicRoomsModal(false)}
+        onCreatePublicRoom={() => {
+          setShowPublicRoomsModal(false);
+          setShowMultiplayerModal(true);
+        }}
+        onOpenAuth={onOpenAuth}
+      />
+
+      {/* Friends & Social Hub Modal */}
+      <FriendsModal
+        isOpen={showFriendsModal}
+        onClose={() => setShowFriendsModal(false)}
+        onOpenAuth={onOpenAuth}
+      />
+
+      {/* Competitive Leaderboard Modal */}
+      <LeaderboardModal
+        isOpen={showLeaderboardModal}
+        onClose={() => setShowLeaderboardModal(false)}
         onOpenAuth={onOpenAuth}
       />
     </div>

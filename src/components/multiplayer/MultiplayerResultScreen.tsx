@@ -5,9 +5,10 @@
  * Clearly labeled "Casual" — no competitive anti-cheat claimed.
  */
 
-import React from 'react';
-import { Trophy, RefreshCw, LogOut, Star, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trophy, RefreshCw, LogOut, Star, XCircle, Share2 } from 'lucide-react';
 import { MatchParticipant } from '@/types/room';
+import { ShareResultCard } from '@/components/social/ShareResultCard';
 
 interface MultiplayerResultScreenProps {
   matchResults:  MatchParticipant[];
@@ -41,6 +42,8 @@ export const MultiplayerResultScreen: React.FC<MultiplayerResultScreenProps> = (
   onLeave,
   isHost,
 }) => {
+  const [showShareCard, setShowShareCard] = useState(false);
+
   const sorted = [...matchResults].sort((a, b) => {
     // Completed players sorted by score desc, then eliminated players by elimination order
     if (a.completed !== b.completed) return a.completed ? -1 : 1;
@@ -131,6 +134,15 @@ export const MultiplayerResultScreen: React.FC<MultiplayerResultScreenProps> = (
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-lg">
+        {myResult && (
+          <button
+            onClick={() => setShowShareCard((prev) => !prev)}
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-600/20 border border-cyan-500/40 hover:bg-cyan-600/30 text-cyan-300 font-bold text-sm transition"
+          >
+            <Share2 className="w-4 h-4" />
+            {showShareCard ? 'Hide Card' : 'Share Result'}
+          </button>
+        )}
         {isHost && (
           <button
             onClick={onRematch}
@@ -155,6 +167,26 @@ export const MultiplayerResultScreen: React.FC<MultiplayerResultScreenProps> = (
           Leave
         </button>
       </div>
+
+      {/* Share Card Display */}
+      {showShareCard && myResult && (
+        <div className="mt-6 w-full max-w-sm animate-fadeIn">
+          <ShareResultCard
+            data={{
+              gameName: 'PraiseTiles',
+              songTitle,
+              instrument: 'piano',
+              roomMode: 'casual',
+              score: myResult.score,
+              accuracy: myResult.accuracy,
+              highestCombo: myResult.highestCombo,
+              placement: myResult.placement ?? 1,
+              totalPlayers: matchResults.length,
+              timestamp: new Date().toISOString(),
+            }}
+          />
+        </div>
+      )}
 
       <p className="mt-6 text-[10px] text-gray-600 text-center max-w-xs">
         Results labeled &ldquo;Casual&rdquo;. Sync tolerance ~±500ms over internet.

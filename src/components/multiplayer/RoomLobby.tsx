@@ -22,6 +22,7 @@ import { NominationPanel } from './NominationPanel';
 import { VotingPanel } from './VotingPanel';
 import { RoomGameContainer } from './RoomGameContainer';
 import { MultiplayerResultScreen } from './MultiplayerResultScreen';
+import { RoomChat } from './RoomChat';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { validateAudioFile } from '@/lib/audio/validator';
 import { generateRhythmMapFromAudio } from '@/lib/audio/analyzer';
@@ -371,6 +372,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({ inviteCode, onLeave }) => 
             <Music2 className="w-3.5 h-3.5 text-cyan-400" />
             {roomState?.instrument === 'piano' ? 'Piano Tiles' : 'Guitar Tiles'}
           </div>
+
+          {/* Lobby chat & quick reactions */}
+          <RoomChat />
 
           {/* All-ready indicator */}
           {allReady && isHost && status === 'uploading' && activeRhythmMap && (

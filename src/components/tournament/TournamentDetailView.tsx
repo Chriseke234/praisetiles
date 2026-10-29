@@ -206,6 +206,7 @@ export const TournamentDetailView: React.FC<TournamentDetailViewProps> = ({
       {/* Hero Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gray-950 border border-gray-800 shadow-2xl">
         <div className="relative h-48 sm:h-64 w-full overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={tournament.coverImageUrl}
             alt={tournament.title}

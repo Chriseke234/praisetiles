@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Friendship } from '@/types/social';
+import { checkRateLimit, createRateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from '@/lib/security/rateLimiter';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -87,6 +88,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(`friends:${clientIp}`, RATE_LIMIT_PRESETS.SOCIAL);
+  if (!rateLimit.success) {
+    return createRateLimitResponse(rateLimit);
+  }
+
   if (!SUPABASE_URL || !SUPABASE_ANON) {
     return NextResponse.json({ error: 'Service not configured' }, { status: 503 });
   }

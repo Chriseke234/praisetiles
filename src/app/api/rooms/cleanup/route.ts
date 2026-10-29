@@ -22,13 +22,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Service not configured' }, { status: 503 });
   }
 
-  // Require shared secret for cleanup endpoint
-  if (CLEANUP_SECRET) {
-    const authHeader = req.headers.get('authorization') ?? '';
-    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (provided !== CLEANUP_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Fail-closed security: CLEANUP_SECRET must be configured and match the Authorization header
+  if (!CLEANUP_SECRET) {
+    return NextResponse.json(
+      { error: 'Cleanup endpoint is disabled (CLEANUP_SECRET is not configured)' },
+      { status: 503 }
+    );
+  }
+
+  const authHeader = req.headers.get('authorization') ?? '';
+  const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (provided !== CLEANUP_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {

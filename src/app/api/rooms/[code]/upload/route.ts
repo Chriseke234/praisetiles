@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { MULTIPLAYER_CONFIG } from '@/config/multiplayer';
+import { checkRateLimit, createRateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from '@/lib/security/rateLimiter';
 
 const SUPABASE_URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON         = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,6 +18,12 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ code: string }> }
 ) {
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(`audio_upload:${clientIp}`, RATE_LIMIT_PRESETS.AUDIO_UPLOAD);
+  if (!rateLimit.success) {
+    return createRateLimitResponse(rateLimit);
+  }
+
   const { code } = await context.params;
 
   if (!SUPABASE_URL || !SUPABASE_ANON) {

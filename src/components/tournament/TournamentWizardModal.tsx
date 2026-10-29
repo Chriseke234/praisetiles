@@ -223,6 +223,7 @@ export const TournamentWizardModal: React.FC<TournamentWizardModalProps> = ({
                           : 'border-gray-800 opacity-60 hover:opacity-100'
                       }`}
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
                       <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-black/70 px-1.5 py-0.5 rounded backdrop-blur-sm">
                         {img.label}

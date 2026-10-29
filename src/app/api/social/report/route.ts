@@ -5,11 +5,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, createRateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from '@/lib/security/rateLimiter';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function POST(req: NextRequest) {
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(`report:${clientIp}`, RATE_LIMIT_PRESETS.REPORT);
+  if (!rateLimit.success) {
+    return createRateLimitResponse(rateLimit);
+  }
+
   if (!SUPABASE_URL || !SUPABASE_ANON) {
     return NextResponse.json({ error: 'Service not configured' }, { status: 503 });
   }

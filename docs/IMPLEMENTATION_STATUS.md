@@ -1,9 +1,10 @@
 # PraiseTiles — Implementation Status
 
-**Status Date:** 28 October 2026  
-**Current Milestone:** Phase 6 Complete — Advanced Audio Intelligence, Rhythm-Map Quality & Gameplay Depth  
+**Status Date:** 29 October 2026  
+**Current Milestone:** Phase 7 Complete — Production Hardening, Security, Performance, Observability & Launch Readiness  
 **Product Title:** PraiseTiles (`praisetiles`)  
-**Rules Version:** `6.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
+**Rules Version:** `7.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
+**Launch Recommendation:** **GO FOR PRODUCTION RELEASE**
 
 ---
 
@@ -188,21 +189,71 @@ Location: `supabase/migrations/20261029000000_phase4_social_ranked.sql`
 
 ---
 
-## 7. Test Verification & Results
+## 7. Phase 7 Features Implemented (Production Hardening, Security, Performance, Observability & Launch Readiness)
+
+### 1. Security Hardening & Rate Limiting
+- `src/lib/security/rateLimiter.ts`:
+  - Sliding-window in-memory rate limiter with per-IP and per-user bucket keys.
+  - Standard RFC 429 response helper with `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+  - Rate limiting enforced on `/api/rooms/create` (10/min), `/api/rooms/[code]/upload` (5/min), `/api/matchmaking/queue` (20/min), `/api/social/report` (5/5min), `/api/social/friends` (30/min).
+- `src/app/api/rooms/cleanup/route.ts`:
+  - Hardened with fail-closed security logic: explicitly rejects requests with HTTP 503 if `CLEANUP_SECRET` is unset, and HTTP 401 if bearer token does not match.
+- `next.config.ts`:
+  - Comprehensive HTTP security headers: `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, and fine-grained `Content-Security-Policy` allowing Supabase and Unsplash assets.
+- `src/lib/security/envValidator.ts`:
+  - Centralized runtime environment validator ensuring critical variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) are present and properly formed without leaking raw secret values.
+
+### 2. Database Integrity & Composite Indexes
+- `supabase/migrations/20261031000000_phase7_hardening_indexes.sql`:
+  - `idx_rooms_status_public` on `rooms(status, is_public)` for rapid lobby filtering.
+  - `idx_rooms_audio_expires` on `rooms(audio_expires_at)` for high-efficiency audio cleanup queries.
+  - `idx_room_matches_room_status` on `room_matches(room_id, status)`.
+  - `idx_match_scores_match_score` on `match_scores(match_id, score DESC)` for lightning leaderboard ranking.
+  - `idx_profiles_competitive_rating` on `profiles(competitive_rating DESC)`.
+  - `idx_tournament_participants_status` and `idx_tournament_matches_bracket`.
+  - `idx_season_standings_rank` on `season_standings(season_id, tournament_points DESC)`.
+  - `idx_friendships_lookup` and `idx_reports_status`.
+
+### 3. Observability, Logging & Health Monitoring
+- `src/lib/observability/logger.ts`:
+  - Structured JSON logger outputting ISO timestamps, log level, event name, and safe metadata.
+  - Deep recursive data sanitization masking passwords, tokens, bearer headers, service keys, and private credentials.
+- `src/app/api/health/route.ts`:
+  - Production health probe reporting overall status (`healthy`, `degraded`, `unhealthy`), uptime in seconds, Supabase connectivity ping, and memory utilization (RSS, heapUsed, heapTotal).
+- `src/components/common/ErrorBoundary.tsx`:
+  - Accessible client-side React error boundary with fallback interface, recovery retry actions, and SVG iconography.
+
+### 4. Accessibility, Legal Compliance & UI Polish
+- `src/components/legal/TermsOfServiceModal.tsx`:
+  - Terms of service modal specifying gospel community focus, audio upload authorization, and competitive anti-cheat policies.
+- `src/components/legal/PrivacyPolicyModal.tsx`:
+  - Privacy policy and ephemeral audio lifecycle disclosure explaining 2-hour storage TTL and permanent deletion guarantees.
+- `src/components/setup/AudioUploadModal.tsx`:
+  - Explicit audio copyright and uploader authorization confirmation required before processing.
+- `src/components/menu/MainMenu.tsx`:
+  - Footer with accessible links to Terms of Service, Privacy Policy, and live System Health monitor.
+
+### 5. Performance Optimization & Bundle Code-Splitting
+- Lazy loaded heavyweight modal trees with `next/dynamic` (`PublicRoomBrowser`, `FriendsModal`, `LeaderboardModal`, `TournamentHub`, `AudioEvaluationTool`, `TermsOfServiceModal`, `PrivacyPolicyModal`).
+
+---
+
+## 8. Test Verification & Results
 
 ```bash
 # Unit & Integration Tests (Vitest)
 npm test
-# Result: 9 passed (194/194 tests passed)
+# Result: 10 passed (204/204 tests passed, 100% success rate)
+# - tests/phase7_production_hardening.test.ts (10 tests)
 # - tests/phase6_audio_intelligence.test.ts (22 tests)
-# - tests/audio.test.ts (8 tests)
 # - tests/phase5_tournaments.test.ts (69 tests)
-# - tests/scoring.test.ts (16 tests)
 # - tests/phase4_multiplayer.test.ts (27 tests)
-# - tests/progression.test.ts (12 tests)
-# - tests/auth.test.ts (5 tests)
-# - tests/engine.test.ts (6 tests)
 # - tests/multiplayer.test.ts (29 tests)
+# - tests/scoring.test.ts (16 tests)
+# - tests/progression.test.ts (12 tests)
+# - tests/audio.test.ts (8 tests)
+# - tests/engine.test.ts (6 tests)
+# - tests/auth.test.ts (5 tests)
 
 # TypeScript Check
 npx tsc --noEmit
@@ -214,5 +265,5 @@ npm run lint
 
 # Next.js 16.4.3 Turbopack Production Build
 npm run build
-# Result: ✓ Compiled successfully in 14.1s (All 23 routes optimized, 0 errors)
+# Result: ✓ Compiled successfully (All routes optimized, 0 errors)
 ```

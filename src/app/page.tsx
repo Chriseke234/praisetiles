@@ -14,6 +14,7 @@ import { ResultScreen } from '@/components/gameplay/ResultScreen';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ProfileModal } from '@/components/profile/ProfileModal';
 import { TransferGuestModal } from '@/components/auth/TransferGuestModal';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 type AppView = 'MENU' | 'UPLOAD' | 'PREVIEW' | 'PLAYING' | 'RESULT';
 
@@ -194,12 +195,14 @@ function PraiseTilesGame() {
 
 export default function PraiseTilesApp() {
   return (
-    <AuthProvider>
-      <SocialProvider>
-        <TournamentProvider>
-          <PraiseTilesGame />
-        </TournamentProvider>
-      </SocialProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SocialProvider>
+          <TournamentProvider>
+            <PraiseTilesGame />
+          </TournamentProvider>
+        </SocialProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

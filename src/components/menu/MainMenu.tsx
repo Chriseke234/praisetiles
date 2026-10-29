@@ -7,15 +7,20 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocial } from '@/lib/social/SocialContext';
 import { useTournament } from '@/lib/tournament/TournamentContext';
 import { getGemTier } from '@/config/progression';
+import dynamic from 'next/dynamic';
 import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
-import { PublicRoomBrowser } from '@/components/multiplayer/PublicRoomBrowser';
-import { FriendsModal } from '@/components/social/FriendsModal';
-import { LeaderboardModal } from '@/components/social/LeaderboardModal';
-import { TournamentHub } from '@/components/tournament/TournamentHub';
 import { NotificationDrawer } from '@/components/social/NotificationDrawer';
-import { AudioEvaluationTool } from '@/components/dev/AudioEvaluationTool';
 import { useRouter } from 'next/navigation';
+
+// Lazy-loaded heavyweight modal components for bundle splitting
+const PublicRoomBrowser = dynamic(() => import('@/components/multiplayer/PublicRoomBrowser').then(m => m.PublicRoomBrowser), { ssr: false });
+const FriendsModal = dynamic(() => import('@/components/social/FriendsModal').then(m => m.FriendsModal), { ssr: false });
+const LeaderboardModal = dynamic(() => import('@/components/social/LeaderboardModal').then(m => m.LeaderboardModal), { ssr: false });
+const TournamentHub = dynamic(() => import('@/components/tournament/TournamentHub').then(m => m.TournamentHub), { ssr: false });
+const AudioEvaluationTool = dynamic(() => import('@/components/dev/AudioEvaluationTool').then(m => m.AudioEvaluationTool), { ssr: false });
+const TermsOfServiceModal = dynamic(() => import('@/components/legal/TermsOfServiceModal').then(m => m.TermsOfServiceModal), { ssr: false });
+const PrivacyPolicyModal = dynamic(() => import('@/components/legal/PrivacyPolicyModal').then(m => m.PrivacyPolicyModal), { ssr: false });
 
 interface MainMenuProps {
   onSelectInstrument: (instrument: InstrumentType) => void;
@@ -46,6 +51,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [showTournamentsHub, setShowTournamentsHub]     = React.useState(false);
   const [showNotifications, setShowNotifications]       = React.useState(false);
   const [showAudioEval, setShowAudioEval]               = React.useState(false);
+  const [showTermsModal, setShowTermsModal]             = React.useState(false);
+  const [showPrivacyModal, setShowPrivacyModal]         = React.useState(false);
 
   const { user, profile, progress } = useAuth();
   const { invitations, respondInvitation } = useSocial();
@@ -419,23 +426,55 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </main>
 
       {/* Footer Info */}
-      <footer className="relative z-10 w-full max-w-4xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
-        <div className="flex items-center gap-3">
-          <p className="text-gray-400">
-            Touch or Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">D</kbd>{' '}
-            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">F</kbd>{' '}
-            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">J</kbd>{' '}
-            <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
-          </p>
+      <footer className="relative z-10 w-full max-w-4xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
+          <div className="flex items-center gap-3">
+            <p className="text-gray-400">
+              Touch or Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">D</kbd>{' '}
+              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">F</kbd>{' '}
+              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">J</kbd>{' '}
+              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowAudioEval(true)}
+              className="text-[11px] text-gray-500 hover:text-cyan-400 transition flex items-center gap-1"
+              title="Audio Intelligence Diagnostics"
+            >
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Audio Diagnostics</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Legal & Health Status Links */}
+        <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-gray-400 pt-1">
           <button
-            onClick={() => setShowAudioEval(true)}
-            className="text-[11px] text-gray-500 hover:text-cyan-400 transition flex items-center gap-1"
-            title="Audio Intelligence Diagnostics"
+            type="button"
+            onClick={() => setShowTermsModal(true)}
+            className="hover:text-amber-400 underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded"
           >
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Audio Diagnostics</span>
+            Terms of Service
           </button>
+          <span>&bull;</span>
+          <button
+            type="button"
+            onClick={() => setShowPrivacyModal(true)}
+            className="hover:text-amber-400 underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded"
+          >
+            Privacy Policy & Audio Retention
+          </button>
+          <span>&bull;</span>
+          <a
+            href="/api/health"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+            <span>System Health (v7.0.0)</span>
+          </a>
         </div>
       </footer>
 
@@ -503,6 +542,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <AudioEvaluationTool
         isOpen={showAudioEval}
         onClose={() => setShowAudioEval(false)}
+      />
+
+      {/* Production Legal & Compliance Modals */}
+      <TermsOfServiceModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
+
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
       />
     </div>
   );

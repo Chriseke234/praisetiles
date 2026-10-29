@@ -58,6 +58,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onSe
     >
       {/* Cover Image Banner */}
       <div className="relative h-36 w-full overflow-hidden bg-gray-900">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={tournament.coverImageUrl}
           alt={tournament.title}

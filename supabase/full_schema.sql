@@ -2601,43 +2601,43 @@ $$;
 
 -- 1. Rooms & Discovery Performance
 CREATE INDEX IF NOT EXISTS idx_rooms_status_public
-  ON rooms(status, is_public)
+  ON public.rooms(status, is_public)
   WHERE is_public = true;
 
 CREATE INDEX IF NOT EXISTS idx_rooms_audio_expires
-  ON rooms(audio_expires_at)
+  ON public.rooms(audio_expires_at)
   WHERE audio_storage_path IS NOT NULL;
 
 -- 2. Room Matches & Realtime Scoring
 CREATE INDEX IF NOT EXISTS idx_room_matches_room_status
-  ON room_matches(room_id, status);
+  ON public.room_matches(room_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_match_scores_match_score
-  ON match_scores(match_id, score DESC);
+CREATE INDEX IF NOT EXISTS idx_match_participants_match_score
+  ON public.match_participants(match_id, score DESC);
 
 -- 3. Competitive Leaderboards & Profiles
-CREATE INDEX IF NOT EXISTS idx_profiles_competitive_rating
-  ON profiles(competitive_rating DESC);
+CREATE INDEX IF NOT EXISTS idx_competitive_ratings_rating
+  ON public.competitive_ratings(rating DESC);
 
-CREATE INDEX IF NOT EXISTS idx_match_history_user_completed
-  ON match_history(user_id, completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_match_history_user_created
+  ON public.match_history(user_id, created_at DESC);
 
 -- 4. Tournaments & Brackets
 CREATE INDEX IF NOT EXISTS idx_tournament_participants_status
-  ON tournament_participants(tournament_id, status);
+  ON public.tournament_participants(tournament_id, status);
 
 CREATE INDEX IF NOT EXISTS idx_tournament_matches_bracket
-  ON tournament_matches(tournament_id, round, match_order);
+  ON public.tournament_matches(tournament_id, round_index, match_index_in_round);
 
 CREATE INDEX IF NOT EXISTS idx_season_standings_rank
-  ON season_standings(season_id, tournament_points DESC);
+  ON public.season_standings(season_id, tournament_points DESC);
 
 -- 5. Social & Moderation Indexes
 CREATE INDEX IF NOT EXISTS idx_friendships_lookup
-  ON friendships(user_id, friend_id, status);
+  ON public.friendships(user_id, friend_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_reports_status
-  ON reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_reports_reported
+  ON public.user_reports(reported_id, created_at DESC);
 /*
  * PraiseTiles Gospel Rhythm Game
  * Migration: 20261101000000_phase8_profile_settings.sql

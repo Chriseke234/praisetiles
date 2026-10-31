@@ -68,140 +68,148 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-amber-500/10 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
 
       {/* Top Navbar */}
-      <header className="relative z-10 w-full max-w-4xl flex items-center justify-between border-b border-gray-800/80 pb-4">
+      <header className="relative z-10 w-full max-w-5xl lg:max-w-6xl flex items-center justify-between border-b border-gray-800/80 pb-4 gap-2 sm:gap-4">
         {/* Logo and Brand — entrance animation per GDD §3 */}
-        <div className="flex items-center gap-3 animate-brand-entrance">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center glow-gold">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 animate-brand-entrance">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center glow-gold shrink-0">
             <Music className="w-5 h-5 text-black stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-wider bg-gradient-to-r from-amber-400 via-amber-200 to-cyan-400 bg-clip-text text-transparent">
+            <h1 className="text-lg sm:text-2xl font-black tracking-wider bg-gradient-to-r from-amber-400 via-amber-200 to-cyan-400 bg-clip-text text-transparent leading-none">
               PRAISETILES
             </h1>
-            <p className="text-[10px] sm:text-xs tracking-widest uppercase text-gray-400 font-semibold">
+            <p className="text-[9px] sm:text-xs tracking-widest uppercase text-gray-400 font-semibold mt-0.5">
               Gospel Rhythm Arena
             </p>
           </div>
         </div>
 
         {/* User profile, Guest status, Social, Ranks, Tournaments & Quick controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Tournament Arena Trigger */}
-          <button
-            onClick={() => setShowTournamentsHub(true)}
-            title="Championship Tournaments"
-            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition glow-gold"
-          >
-            <Award className="w-4 h-4 text-amber-400" />
-            <span className="hidden lg:inline">Tournaments</span>
-          </button>
-
-          {/* Leaderboard Modal Trigger */}
-          <button
-            onClick={() => setShowLeaderboardModal(true)}
-            title="Ranked Leaderboards"
-            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span className="hidden lg:inline">Ranks</span>
-          </button>
-
-          {/* Friends & Social Hub Trigger */}
-          <button
-            onClick={() => setShowFriendsModal(true)}
-            title="Social & Friends"
-            className="relative p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Users className="w-4 h-4 text-cyan-400" />
-            <span className="hidden lg:inline">Social</span>
-            {invitations.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
-            )}
-          </button>
-
-          {/* In-App Notifications Trigger */}
-          <button
-            onClick={() => setShowNotifications(true)}
-            title="Notifications"
-            className="relative p-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-400 hover:text-white transition"
-          >
-            <Bell className="w-4 h-4 text-gray-300" />
-            {unreadNotificationCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
-            )}
-          </button>
-
-          {/* Authenticated Profile or Guest Pill */}
-          {user && profile ? (
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Game Hubs: Tournaments, Ranks, Social, Notifications */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Tournament Arena Trigger (clean default state without persistent halo) */}
             <button
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/50 transition glow-gold"
+              onClick={() => setShowTournamentsHub(true)}
+              title="Championship Tournaments"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 whitespace-nowrap"
             >
-              <div
-                style={{ backgroundColor: tier.colorHex }}
-                className="w-5 h-5 rounded-lg flex items-center justify-center text-black font-black text-[10px]"
-              >
-                {tier.gemRank[0]}
-              </div>
-              <span className="text-xs font-bold text-white max-w-[100px] truncate">
-                {profile.displayName}
-              </span>
+              <Award className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="hidden lg:inline">Tournaments</span>
             </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={onOpenProfile}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900/90 border border-gray-800 text-xs text-amber-300 font-medium hover:border-amber-500/40 transition"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline">Guest</span>
-              </button>
-              <button
-                onClick={onOpenAuth}
-                className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition shadow"
-              >
-                Sign In
-              </button>
-            </div>
-          )}
 
-          {/* Sound Controls */}
-          <div className="flex items-center gap-2 bg-gray-900/90 border border-gray-800 px-3 py-1.5 rounded-xl">
+            {/* Leaderboard Modal Trigger */}
             <button
-              onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
-              aria-label={volume > 0 ? 'Mute Audio' : 'Unmute Audio'}
-              className="text-gray-400 hover:text-amber-400 transition"
+              onClick={() => setShowLeaderboardModal(true)}
+              title="Ranked Leaderboards"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 whitespace-nowrap"
             >
-              {volume > 0 ? (
-                <Volume2 className="w-4 h-4 text-cyan-400" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-rose-400" />
+              <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="hidden lg:inline">Ranks</span>
+            </button>
+
+            {/* Friends & Social Hub Trigger */}
+            <button
+              onClick={() => setShowFriendsModal(true)}
+              title="Social & Friends"
+              className="relative p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-cyan-500/40 text-gray-300 hover:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 whitespace-nowrap"
+            >
+              <Users className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span className="hidden lg:inline">Social</span>
+              {invitations.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
               )}
             </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={volume}
-              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              aria-label="Master Volume"
-              className="w-14 sm:w-16 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
-            />
+
+            {/* In-App Notifications Trigger */}
+            <button
+              onClick={() => setShowNotifications(true)}
+              title="Notifications"
+              className="relative p-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-400 hover:text-white transition shrink-0"
+            >
+              <Bell className="w-4 h-4 text-gray-300" />
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#090a0f] animate-pulse" />
+              )}
+            </button>
           </div>
 
-          {/* Reduced Motion Toggle */}
-          <button
-            onClick={onToggleReducedMotion}
-            title={reducedMotion ? 'Enable Motion Effects' : 'Reduce Motion Effects'}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-medium transition ${
-              reducedMotion
-                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                : 'bg-gray-900/90 border-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            {reducedMotion ? 'Motion: Off' : 'Motion: On'}
-          </button>
+          {/* Authenticated Profile or Guest Pill */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {user && profile ? (
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/50 transition shrink-0 whitespace-nowrap"
+              >
+                <div
+                  style={{ backgroundColor: tier.colorHex }}
+                  className="w-5 h-5 rounded-lg flex items-center justify-center text-black font-black text-[10px] shrink-0"
+                >
+                  {tier.gemRank[0]}
+                </div>
+                <span className="text-xs font-bold text-white max-w-[100px] truncate">
+                  {profile.displayName}
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={onOpenProfile}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gray-900/90 border border-gray-800 text-xs text-amber-300 font-medium hover:border-amber-500/40 transition shrink-0 whitespace-nowrap"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="hidden sm:inline">Guest</span>
+                </button>
+                <button
+                  onClick={onOpenAuth}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition shadow-md shadow-amber-500/20 shrink-0 whitespace-nowrap"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* System Utility Controls: Audio & Motion */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Sound Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-900/90 border border-gray-800 px-2.5 sm:px-3 py-1.5 rounded-xl shrink-0">
+              <button
+                onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
+                aria-label={volume > 0 ? 'Mute Audio' : 'Unmute Audio'}
+                className="text-gray-400 hover:text-amber-400 transition shrink-0"
+              >
+                {volume > 0 ? (
+                  <Volume2 className="w-4 h-4 text-cyan-400" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-rose-400" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={volume}
+                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                aria-label="Master Volume"
+                className="w-12 sm:w-16 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500 shrink-0"
+              />
+            </div>
+
+            {/* Reduced Motion Toggle */}
+            <button
+              onClick={onToggleReducedMotion}
+              title={reducedMotion ? 'Enable Motion Effects' : 'Reduce Motion Effects'}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-medium transition shrink-0 whitespace-nowrap ${
+                reducedMotion
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                  : 'bg-gray-900/90 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {reducedMotion ? 'Motion: Off' : 'Motion: On'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -426,7 +434,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </main>
 
       {/* Footer Info */}
-      <footer className="relative z-10 w-full max-w-4xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col gap-2">
+      <footer className="relative z-10 w-full max-w-5xl lg:max-w-6xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col gap-2">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
           <div className="flex items-center gap-3">

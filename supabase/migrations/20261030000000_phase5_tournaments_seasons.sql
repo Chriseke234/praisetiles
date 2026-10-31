@@ -18,9 +18,11 @@ CREATE INDEX IF NOT EXISTS idx_tournament_organizers_user ON tournament_organize
 
 ALTER TABLE tournament_organizers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament organizers" ON tournament_organizers;
 CREATE POLICY "Anyone can view tournament organizers"
   ON tournament_organizers FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Only admins can manage tournament organizers" ON tournament_organizers;
 CREATE POLICY "Only admins can manage tournament organizers"
   ON tournament_organizers FOR ALL
   USING (
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 ALTER TABLE seasons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view seasons" ON seasons;
 CREATE POLICY "Anyone can view seasons"
   ON seasons FOR SELECT USING (TRUE);
 
@@ -90,10 +93,12 @@ CREATE INDEX IF NOT EXISTS idx_tournaments_organizer ON tournaments(organizer_id
 
 ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view published tournaments" ON tournaments;
 CREATE POLICY "Anyone can view published tournaments"
   ON tournaments FOR SELECT
   USING (status != 'draft' OR auth.uid() = organizer_id);
 
+DROP POLICY IF EXISTS "Organizers can create and edit their tournaments" ON tournaments;
 CREATE POLICY "Organizers can create and edit their tournaments"
   ON tournaments FOR ALL
   USING (auth.uid() = organizer_id);
@@ -120,9 +125,11 @@ CREATE INDEX IF NOT EXISTS idx_tournament_participants_user ON tournament_partic
 
 ALTER TABLE tournament_participants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament participants" ON tournament_participants;
 CREATE POLICY "Anyone can view tournament participants"
   ON tournament_participants FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Users can manage their own registration" ON tournament_participants;
 CREATE POLICY "Users can manage their own registration"
   ON tournament_participants FOR ALL
   USING (auth.uid() = user_id);
@@ -161,6 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_tournament_matches_room ON tournament_matches(roo
 
 ALTER TABLE tournament_matches ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament matches" ON tournament_matches;
 CREATE POLICY "Anyone can view tournament matches"
   ON tournament_matches FOR SELECT USING (TRUE);
 
@@ -185,6 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_tournament_disputes_tourney ON tournament_dispute
 
 ALTER TABLE tournament_disputes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their disputes or organizers can view all" ON tournament_disputes;
 CREATE POLICY "Users can view their disputes or organizers can view all"
   ON tournament_disputes FOR SELECT
   USING (
@@ -192,6 +201,7 @@ CREATE POLICY "Users can view their disputes or organizers can view all"
     OR auth.uid() IN (SELECT organizer_id FROM tournaments WHERE id = tournament_id)
   );
 
+DROP POLICY IF EXISTS "Participants can file disputes" ON tournament_disputes;
 CREATE POLICY "Participants can file disputes"
   ON tournament_disputes FOR INSERT
   WITH CHECK (auth.uid() = filed_by_user_id);
@@ -215,6 +225,7 @@ CREATE INDEX IF NOT EXISTS idx_season_standings_season_pts ON season_standings(s
 
 ALTER TABLE season_standings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view season standings" ON season_standings;
 CREATE POLICY "Anyone can view season standings"
   ON season_standings FOR SELECT USING (TRUE);
 
@@ -232,6 +243,7 @@ CREATE TABLE IF NOT EXISTS achievements (
 
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view achievements" ON achievements;
 CREATE POLICY "Anyone can view achievements"
   ON achievements FOR SELECT USING (TRUE);
 
@@ -258,6 +270,7 @@ CREATE INDEX IF NOT EXISTS idx_player_achievements_user ON player_achievements(u
 
 ALTER TABLE player_achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view unlocked achievements" ON player_achievements;
 CREATE POLICY "Anyone can view unlocked achievements"
   ON player_achievements FOR SELECT USING (TRUE);
 
@@ -279,6 +292,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id,
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view and manage their notifications" ON notifications;
 CREATE POLICY "Users can view and manage their notifications"
   ON notifications FOR ALL
   USING (auth.uid() = user_id);

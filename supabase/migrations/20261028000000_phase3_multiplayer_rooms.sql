@@ -164,6 +164,7 @@ ALTER TABLE public.match_participants ENABLE ROW LEVEL SECURITY;
 
 -- ---- rooms ----
 -- Any authenticated user can view a room they participate in (or before joining via invite code lookup)
+DROP POLICY IF EXISTS "rooms_select_participant" ON public.rooms;
 CREATE POLICY "rooms_select_participant" ON public.rooms
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
@@ -173,32 +174,39 @@ CREATE POLICY "rooms_select_participant" ON public.rooms
   );
 
 -- Only SECURITY DEFINER functions insert/update rooms
+DROP POLICY IF EXISTS "rooms_no_direct_insert" ON public.rooms;
 CREATE POLICY "rooms_no_direct_insert" ON public.rooms
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rooms_no_direct_update" ON public.rooms;
 CREATE POLICY "rooms_no_direct_update" ON public.rooms
   FOR UPDATE USING (FALSE);
 
 -- ---- room_participants ----
+DROP POLICY IF EXISTS "rp_select_own_room" ON public.room_participants;
 CREATE POLICY "rp_select_own_room" ON public.room_participants
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "rp_no_direct_insert" ON public.room_participants;
 CREATE POLICY "rp_no_direct_insert" ON public.room_participants
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rp_no_direct_update" ON public.room_participants;
 CREATE POLICY "rp_no_direct_update" ON public.room_participants
   FOR UPDATE USING (FALSE);
 
 -- ---- nominations ----
+DROP POLICY IF EXISTS "nom_select_own_room" ON public.nominations;
 CREATE POLICY "nom_select_own_room" ON public.nominations
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "nom_insert_own" ON public.nominations;
 CREATE POLICY "nom_insert_own" ON public.nominations
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND
@@ -206,19 +214,23 @@ CREATE POLICY "nom_insert_own" ON public.nominations
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "nom_update_own" ON public.nominations;
 CREATE POLICY "nom_update_own" ON public.nominations
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "nom_delete_own" ON public.nominations;
 CREATE POLICY "nom_delete_own" ON public.nominations
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ---- votes ----
+DROP POLICY IF EXISTS "votes_select_own_room" ON public.votes;
 CREATE POLICY "votes_select_own_room" ON public.votes
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "votes_insert_own" ON public.votes;
 CREATE POLICY "votes_insert_own" ON public.votes
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND
@@ -226,23 +238,28 @@ CREATE POLICY "votes_insert_own" ON public.votes
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "votes_delete_own" ON public.votes;
 CREATE POLICY "votes_delete_own" ON public.votes
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ---- room_matches ----
+DROP POLICY IF EXISTS "rm_select_participant" ON public.room_matches;
 CREATE POLICY "rm_select_participant" ON public.room_matches
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "rm_no_direct_insert" ON public.room_matches;
 CREATE POLICY "rm_no_direct_insert" ON public.room_matches
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rm_no_direct_update" ON public.room_matches;
 CREATE POLICY "rm_no_direct_update" ON public.room_matches
   FOR UPDATE USING (FALSE);
 
 -- ---- match_participants ----
+DROP POLICY IF EXISTS "mp_select_participant" ON public.match_participants;
 CREATE POLICY "mp_select_participant" ON public.match_participants
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
@@ -254,9 +271,11 @@ CREATE POLICY "mp_select_participant" ON public.match_participants
     )
   );
 
+DROP POLICY IF EXISTS "mp_no_direct_insert" ON public.match_participants;
 CREATE POLICY "mp_no_direct_insert" ON public.match_participants
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "mp_no_direct_update" ON public.match_participants;
 CREATE POLICY "mp_no_direct_update" ON public.match_participants
   FOR UPDATE USING (FALSE);
 
@@ -779,6 +798,7 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS for storage objects: only room host can upload; participants can download via signed URL
+DROP POLICY IF EXISTS "room_audio_host_upload" ON storage.objects;
 CREATE POLICY "room_audio_host_upload" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'room-audio' AND
@@ -795,6 +815,7 @@ CREATE POLICY "room_audio_host_upload" ON storage.objects
     )
   );
 
+DROP POLICY IF EXISTS "room_audio_participant_select" ON storage.objects;
 CREATE POLICY "room_audio_participant_select" ON storage.objects
   FOR SELECT USING (
     bucket_id = 'room-audio' AND
@@ -808,6 +829,7 @@ CREATE POLICY "room_audio_participant_select" ON storage.objects
     )
   );
 
+DROP POLICY IF EXISTS "room_audio_host_delete" ON storage.objects;
 CREATE POLICY "room_audio_host_delete" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'room-audio' AND

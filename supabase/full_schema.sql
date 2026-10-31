@@ -473,6 +473,7 @@ ALTER TABLE public.match_participants ENABLE ROW LEVEL SECURITY;
 
 -- ---- rooms ----
 -- Any authenticated user can view a room they participate in (or before joining via invite code lookup)
+DROP POLICY IF EXISTS "rooms_select_participant" ON public.rooms;
 CREATE POLICY "rooms_select_participant" ON public.rooms
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
@@ -482,32 +483,39 @@ CREATE POLICY "rooms_select_participant" ON public.rooms
   );
 
 -- Only SECURITY DEFINER functions insert/update rooms
+DROP POLICY IF EXISTS "rooms_no_direct_insert" ON public.rooms;
 CREATE POLICY "rooms_no_direct_insert" ON public.rooms
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rooms_no_direct_update" ON public.rooms;
 CREATE POLICY "rooms_no_direct_update" ON public.rooms
   FOR UPDATE USING (FALSE);
 
 -- ---- room_participants ----
+DROP POLICY IF EXISTS "rp_select_own_room" ON public.room_participants;
 CREATE POLICY "rp_select_own_room" ON public.room_participants
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "rp_no_direct_insert" ON public.room_participants;
 CREATE POLICY "rp_no_direct_insert" ON public.room_participants
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rp_no_direct_update" ON public.room_participants;
 CREATE POLICY "rp_no_direct_update" ON public.room_participants
   FOR UPDATE USING (FALSE);
 
 -- ---- nominations ----
+DROP POLICY IF EXISTS "nom_select_own_room" ON public.nominations;
 CREATE POLICY "nom_select_own_room" ON public.nominations
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "nom_insert_own" ON public.nominations;
 CREATE POLICY "nom_insert_own" ON public.nominations
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND
@@ -515,19 +523,23 @@ CREATE POLICY "nom_insert_own" ON public.nominations
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "nom_update_own" ON public.nominations;
 CREATE POLICY "nom_update_own" ON public.nominations
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "nom_delete_own" ON public.nominations;
 CREATE POLICY "nom_delete_own" ON public.nominations
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ---- votes ----
+DROP POLICY IF EXISTS "votes_select_own_room" ON public.votes;
 CREATE POLICY "votes_select_own_room" ON public.votes
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "votes_insert_own" ON public.votes;
 CREATE POLICY "votes_insert_own" ON public.votes
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND
@@ -535,23 +547,28 @@ CREATE POLICY "votes_insert_own" ON public.votes
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "votes_delete_own" ON public.votes;
 CREATE POLICY "votes_delete_own" ON public.votes
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ---- room_matches ----
+DROP POLICY IF EXISTS "rm_select_participant" ON public.room_matches;
 CREATE POLICY "rm_select_participant" ON public.room_matches
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "rm_no_direct_insert" ON public.room_matches;
 CREATE POLICY "rm_no_direct_insert" ON public.room_matches
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "rm_no_direct_update" ON public.room_matches;
 CREATE POLICY "rm_no_direct_update" ON public.room_matches
   FOR UPDATE USING (FALSE);
 
 -- ---- match_participants ----
+DROP POLICY IF EXISTS "mp_select_participant" ON public.match_participants;
 CREATE POLICY "mp_select_participant" ON public.match_participants
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
@@ -563,9 +580,11 @@ CREATE POLICY "mp_select_participant" ON public.match_participants
     )
   );
 
+DROP POLICY IF EXISTS "mp_no_direct_insert" ON public.match_participants;
 CREATE POLICY "mp_no_direct_insert" ON public.match_participants
   FOR INSERT WITH CHECK (FALSE);
 
+DROP POLICY IF EXISTS "mp_no_direct_update" ON public.match_participants;
 CREATE POLICY "mp_no_direct_update" ON public.match_participants
   FOR UPDATE USING (FALSE);
 
@@ -1088,6 +1107,7 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS for storage objects: only room host can upload; participants can download via signed URL
+DROP POLICY IF EXISTS "room_audio_host_upload" ON storage.objects;
 CREATE POLICY "room_audio_host_upload" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'room-audio' AND
@@ -1104,6 +1124,7 @@ CREATE POLICY "room_audio_host_upload" ON storage.objects
     )
   );
 
+DROP POLICY IF EXISTS "room_audio_participant_select" ON storage.objects;
 CREATE POLICY "room_audio_participant_select" ON storage.objects
   FOR SELECT USING (
     bucket_id = 'room-audio' AND
@@ -1117,6 +1138,7 @@ CREATE POLICY "room_audio_participant_select" ON storage.objects
     )
   );
 
+DROP POLICY IF EXISTS "room_audio_host_delete" ON storage.objects;
 CREATE POLICY "room_audio_host_delete" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'room-audio' AND
@@ -1315,78 +1337,99 @@ ALTER TABLE public.rating_history      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.room_messages       ENABLE ROW LEVEL SECURITY;
 
 -- ---- matchmaking_queue ----
+DROP POLICY IF EXISTS "queue_select_own" ON public.matchmaking_queue;
 CREATE POLICY "queue_select_own" ON public.matchmaking_queue
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "queue_all_trusted_functions" ON public.matchmaking_queue;
 CREATE POLICY "queue_all_trusted_functions" ON public.matchmaking_queue
   FOR ALL USING (auth.uid() = user_id);
 
 -- ---- friendships ----
+DROP POLICY IF EXISTS "friendships_select" ON public.friendships;
 CREATE POLICY "friendships_select" ON public.friendships
   FOR SELECT USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
+DROP POLICY IF EXISTS "friendships_insert" ON public.friendships;
 CREATE POLICY "friendships_insert" ON public.friendships
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "friendships_update" ON public.friendships;
 CREATE POLICY "friendships_update" ON public.friendships
   FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
+DROP POLICY IF EXISTS "friendships_delete" ON public.friendships;
 CREATE POLICY "friendships_delete" ON public.friendships
   FOR DELETE USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
 -- ---- follows ----
+DROP POLICY IF EXISTS "follows_select" ON public.follows;
 CREATE POLICY "follows_select" ON public.follows
   FOR SELECT USING (TRUE); -- public visibility
 
+DROP POLICY IF EXISTS "follows_insert" ON public.follows;
 CREATE POLICY "follows_insert" ON public.follows
   FOR INSERT WITH CHECK (auth.uid() = follower_id);
 
+DROP POLICY IF EXISTS "follows_delete" ON public.follows;
 CREATE POLICY "follows_delete" ON public.follows
   FOR DELETE USING (auth.uid() = follower_id);
 
 -- ---- user_blocks ----
+DROP POLICY IF EXISTS "blocks_select_own" ON public.user_blocks;
 CREATE POLICY "blocks_select_own" ON public.user_blocks
   FOR SELECT USING (auth.uid() = blocker_id);
 
+DROP POLICY IF EXISTS "blocks_insert_own" ON public.user_blocks;
 CREATE POLICY "blocks_insert_own" ON public.user_blocks
   FOR INSERT WITH CHECK (auth.uid() = blocker_id);
 
+DROP POLICY IF EXISTS "blocks_delete_own" ON public.user_blocks;
 CREATE POLICY "blocks_delete_own" ON public.user_blocks
   FOR DELETE USING (auth.uid() = blocker_id);
 
 -- ---- user_reports ----
+DROP POLICY IF EXISTS "reports_insert_own" ON public.user_reports;
 CREATE POLICY "reports_insert_own" ON public.user_reports
   FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 
 -- ---- room_invitations ----
+DROP POLICY IF EXISTS "invites_select" ON public.room_invitations;
 CREATE POLICY "invites_select" ON public.room_invitations
   FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
+DROP POLICY IF EXISTS "invites_insert" ON public.room_invitations;
 CREATE POLICY "invites_insert" ON public.room_invitations
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
+DROP POLICY IF EXISTS "invites_update" ON public.room_invitations;
 CREATE POLICY "invites_update" ON public.room_invitations
   FOR UPDATE USING (auth.uid() = receiver_id);
 
 -- ---- competitive_ratings ----
+DROP POLICY IF EXISTS "comp_ratings_select_all" ON public.competitive_ratings;
 CREATE POLICY "comp_ratings_select_all" ON public.competitive_ratings
   FOR SELECT USING (TRUE); -- leaderboards need to read all
 
 -- Direct updates to competitive rating are disallowed (only through SECURITY DEFINER RPCs)
+DROP POLICY IF EXISTS "comp_ratings_no_direct_update" ON public.competitive_ratings;
 CREATE POLICY "comp_ratings_no_direct_update" ON public.competitive_ratings
   FOR UPDATE USING (FALSE);
 
 -- ---- rating_history ----
+DROP POLICY IF EXISTS "rating_history_select" ON public.rating_history;
 CREATE POLICY "rating_history_select" ON public.rating_history
   FOR SELECT USING (TRUE);
 
 -- ---- room_messages ----
+DROP POLICY IF EXISTS "room_messages_select_participant" ON public.room_messages;
 CREATE POLICY "room_messages_select_participant" ON public.room_messages
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND
     room_id IN (SELECT room_id FROM public.room_participants WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "room_messages_insert_participant" ON public.room_messages;
 CREATE POLICY "room_messages_insert_participant" ON public.room_messages
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND
@@ -1905,9 +1948,11 @@ CREATE INDEX IF NOT EXISTS idx_tournament_organizers_user ON tournament_organize
 
 ALTER TABLE tournament_organizers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament organizers" ON tournament_organizers;
 CREATE POLICY "Anyone can view tournament organizers"
   ON tournament_organizers FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Only admins can manage tournament organizers" ON tournament_organizers;
 CREATE POLICY "Only admins can manage tournament organizers"
   ON tournament_organizers FOR ALL
   USING (
@@ -1929,6 +1974,7 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 ALTER TABLE seasons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view seasons" ON seasons;
 CREATE POLICY "Anyone can view seasons"
   ON seasons FOR SELECT USING (TRUE);
 
@@ -1977,10 +2023,12 @@ CREATE INDEX IF NOT EXISTS idx_tournaments_organizer ON tournaments(organizer_id
 
 ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view published tournaments" ON tournaments;
 CREATE POLICY "Anyone can view published tournaments"
   ON tournaments FOR SELECT
   USING (status != 'draft' OR auth.uid() = organizer_id);
 
+DROP POLICY IF EXISTS "Organizers can create and edit their tournaments" ON tournaments;
 CREATE POLICY "Organizers can create and edit their tournaments"
   ON tournaments FOR ALL
   USING (auth.uid() = organizer_id);
@@ -2007,9 +2055,11 @@ CREATE INDEX IF NOT EXISTS idx_tournament_participants_user ON tournament_partic
 
 ALTER TABLE tournament_participants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament participants" ON tournament_participants;
 CREATE POLICY "Anyone can view tournament participants"
   ON tournament_participants FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Users can manage their own registration" ON tournament_participants;
 CREATE POLICY "Users can manage their own registration"
   ON tournament_participants FOR ALL
   USING (auth.uid() = user_id);
@@ -2048,6 +2098,7 @@ CREATE INDEX IF NOT EXISTS idx_tournament_matches_room ON tournament_matches(roo
 
 ALTER TABLE tournament_matches ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view tournament matches" ON tournament_matches;
 CREATE POLICY "Anyone can view tournament matches"
   ON tournament_matches FOR SELECT USING (TRUE);
 
@@ -2072,6 +2123,7 @@ CREATE INDEX IF NOT EXISTS idx_tournament_disputes_tourney ON tournament_dispute
 
 ALTER TABLE tournament_disputes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their disputes or organizers can view all" ON tournament_disputes;
 CREATE POLICY "Users can view their disputes or organizers can view all"
   ON tournament_disputes FOR SELECT
   USING (
@@ -2079,6 +2131,7 @@ CREATE POLICY "Users can view their disputes or organizers can view all"
     OR auth.uid() IN (SELECT organizer_id FROM tournaments WHERE id = tournament_id)
   );
 
+DROP POLICY IF EXISTS "Participants can file disputes" ON tournament_disputes;
 CREATE POLICY "Participants can file disputes"
   ON tournament_disputes FOR INSERT
   WITH CHECK (auth.uid() = filed_by_user_id);
@@ -2102,6 +2155,7 @@ CREATE INDEX IF NOT EXISTS idx_season_standings_season_pts ON season_standings(s
 
 ALTER TABLE season_standings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view season standings" ON season_standings;
 CREATE POLICY "Anyone can view season standings"
   ON season_standings FOR SELECT USING (TRUE);
 
@@ -2119,6 +2173,7 @@ CREATE TABLE IF NOT EXISTS achievements (
 
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view achievements" ON achievements;
 CREATE POLICY "Anyone can view achievements"
   ON achievements FOR SELECT USING (TRUE);
 
@@ -2145,6 +2200,7 @@ CREATE INDEX IF NOT EXISTS idx_player_achievements_user ON player_achievements(u
 
 ALTER TABLE player_achievements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view unlocked achievements" ON player_achievements;
 CREATE POLICY "Anyone can view unlocked achievements"
   ON player_achievements FOR SELECT USING (TRUE);
 
@@ -2166,6 +2222,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id,
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view and manage their notifications" ON notifications;
 CREATE POLICY "Users can view and manage their notifications"
   ON notifications FOR ALL
   USING (auth.uid() = user_id);

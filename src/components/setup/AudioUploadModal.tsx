@@ -12,6 +12,8 @@ interface AudioUploadModalProps {
   instrument: InstrumentType;
   audioPlayer: GameAudioPlayer;
   onAudioReady: (buffer: AudioBuffer, map: RhythmMap, title: string) => void;
+  /** Optional callback to skip preview and go straight to gameplay */
+  onQuickPlay?: (buffer: AudioBuffer, map: RhythmMap, title: string) => void;
   onBack: () => void;
 }
 
@@ -19,6 +21,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   instrument,
   audioPlayer,
   onAudioReady,
+  onQuickPlay,
   onBack,
 }) => {
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
@@ -26,6 +29,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [skipPreview, setSkipPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = async (file: File) => {
@@ -59,7 +63,13 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
 
       audioPlayer.setBuffer(validation.buffer);
       setIsProcessing(false);
-      onAudioReady(validation.buffer, map, title);
+
+      // Route to preview or direct gameplay based on user preference
+      if (skipPreview && onQuickPlay) {
+        onQuickPlay(validation.buffer, map, title);
+      } else {
+        onAudioReady(validation.buffer, map, title);
+      }
     } catch {
       setIsProcessing(false);
       setErrorMessage('An unexpected error occurred during audio decoding or analysis.');
@@ -82,7 +92,13 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
       const map = generateRhythmMapFromAudio(buffer, title);
       audioPlayer.setBuffer(buffer);
       setIsProcessing(false);
-      onAudioReady(buffer, map, title);
+
+      // Route to preview or direct gameplay based on user preference
+      if (skipPreview && onQuickPlay) {
+        onQuickPlay(buffer, map, title);
+      } else {
+        onAudioReady(buffer, map, title);
+      }
     } catch {
       setIsProcessing(false);
       setErrorMessage('Failed to synthesize demo praise track.');
@@ -131,18 +147,35 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
           </div>
         )}
 
-        {/* Rights Checkbox (GDD Requirement) */}
-        <div className="mb-5 p-3.5 rounded-xl bg-gray-900/80 border border-gray-800 flex items-start gap-3">
-          <input
-            type="checkbox"
-            id="rights-check"
-            checked={rightsConfirmed}
-            onChange={(e) => setRightsConfirmed(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-900 cursor-pointer"
-          />
-          <label htmlFor="rights-check" className="text-xs text-gray-300 cursor-pointer select-none">
-            I confirm that I have the rights or permission needed to use and play this audio recording.
-          </label>
+        {/* Rights & Preferences */}
+        <div className="mb-5 space-y-2">
+          {/* Rights Checkbox (GDD Requirement) */}
+          <div className="p-3.5 rounded-xl bg-gray-900/80 border border-gray-800 flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="rights-check"
+              checked={rightsConfirmed}
+              onChange={(e) => setRightsConfirmed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-900 cursor-pointer"
+            />
+            <label htmlFor="rights-check" className="text-xs text-gray-300 cursor-pointer select-none">
+              I confirm that I have the rights or permission needed to use and play this audio recording.
+            </label>
+          </div>
+
+          {/* Quick Play (Skip Preview) Toggle per GDD §4 */}
+          <div className="p-3 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
+            <label htmlFor="skip-preview" className="text-xs text-gray-400 cursor-pointer select-none flex items-center gap-2">
+              <span>Quick Play (skip rhythm map preview)</span>
+            </label>
+            <input
+              type="checkbox"
+              id="skip-preview"
+              checked={skipPreview}
+              onChange={(e) => setSkipPreview(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-700 bg-gray-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
+            />
+          </div>
         </div>
 
         {/* Dropzone */}

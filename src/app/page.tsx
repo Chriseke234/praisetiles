@@ -61,6 +61,14 @@ function PraiseTilesGame() {
     setView('PREVIEW');
   };
 
+  // Handle Quick Play (bypass preview straight to gameplay per GDD §4)
+  const handleQuickPlay = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
+    setAudioBuffer(buffer);
+    setRhythmMap(map);
+    setSongTitle(title);
+    setView('PLAYING');
+  };
+
   // Start gameplay
   const handleStartGame = () => {
     if (audioBuffer && rhythmMap) {
@@ -130,6 +138,7 @@ function PraiseTilesGame() {
           instrument={instrument}
           audioPlayer={audioPlayer}
           onAudioReady={handleAudioReady}
+          onQuickPlay={handleQuickPlay}
           onBack={() => setView('MENU')}
         />
       )}

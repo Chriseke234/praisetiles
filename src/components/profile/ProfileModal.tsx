@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useKeyBindings } from '@/hooks/useKeyBindings';
 import {
   X,
   User,
@@ -12,6 +13,17 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
+  Shield,
+  Trash2,
+  Eye,
+  EyeOff,
+  Save,
+  AlertTriangle,
+  Loader2,
+  Keyboard,
+  RotateCcw,
+  Piano,
+  Guitar,
 } from 'lucide-react';
 import {
   evaluateRankPromotion,
@@ -29,12 +41,35 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose,
   onOpenAuth,
 }) => {
-  const { user, profile, progress, stats, guestMatches, isGuest, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'piano' | 'guitar' | 'history'>('overview');
+  const { user, profile, progress, stats, guestMatches, isGuest, signOut, refreshUserData } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'piano' | 'guitar' | 'history' | 'settings'>('overview');
   const [compRating, setCompRating] = useState<number>(1000);
   const [compWins, setCompWins] = useState<number>(0);
   const [compMatches, setCompMatches] = useState<number>(0);
   const [isProvisional, setIsProvisional] = useState<boolean>(true);
+
+  // Settings & Privacy State
+  const [displayNameInput, setDisplayNameInput] = useState<string>('');
+  const [isPublicSetting, setIsPublicSetting] = useState<boolean>(true);
+  const [preferredInstrument, setPreferredInstrument] = useState<'piano' | 'guitar'>('piano');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  // Configurable key bindings (GDD Open Decision #4)
+  const { keys: keyBindings, setKey: setKeyBinding, resetToDefaults: resetKeyBindings, isCustom: hasCustomKeys } = useKeyBindings();
+  const [rebindingLane, setRebindingLane] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (profile) {
+      const timer = setTimeout(() => {
+        setDisplayNameInput(profile.displayName || '');
+        setIsPublicSetting(profile.isPublic ?? true);
+        setPreferredInstrument(profile.preferredInstrument ?? 'piano');
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [profile]);
 
   React.useEffect(() => {
     if (user && isOpen) {
@@ -58,6 +93,78 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       });
     }
   }, [user, isOpen]);
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+    setIsSavingSettings(true);
+    setSettingsMessage(null);
+
+    try {
+      const { getSupabaseBrowserClient } = await import('@/lib/supabase/client');
+      const sb = getSupabaseBrowserClient();
+      const session = (await sb?.auth.getSession())?.data.session;
+      const token = session?.access_token;
+
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          displayName: displayNameInput,
+          isPublic: isPublicSetting,
+          preferredInstrument,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update settings');
+      }
+
+      setSettingsMessage({ text: 'Profile settings saved successfully!', isError: false });
+      await refreshUserData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error updating settings';
+      setSettingsMessage({ text: msg, isError: true });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setIsDeletingAccount(true);
+
+    try {
+      const { getSupabaseBrowserClient } = await import('@/lib/supabase/client');
+      const sb = getSupabaseBrowserClient();
+      const session = (await sb?.auth.getSession())?.data.session;
+      const token = session?.access_token;
+
+      const res = await fetch('/api/profile', {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      await signOut();
+      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error deleting account';
+      setSettingsMessage({ text: msg, isError: true });
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -252,8 +359,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           )}
 
           {/* Navigation Tabs */}
-          <div className="grid grid-cols-4 p-1 bg-gray-900 rounded-xl">
-            {(['overview', 'piano', 'guitar', 'history'] as const).map((tab) => (
+          <div className="grid grid-cols-5 p-1 bg-gray-900 rounded-xl">
+            {(['overview', 'piano', 'guitar', 'history', 'settings'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -392,6 +499,242 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {/* Tab 5: Settings & Privacy */}
+          {activeTab === 'settings' && (
+            <div className="space-y-4">
+              {isGuest ? (
+                /* Guest users cannot edit settings — prompt to sign in */
+                <div className="text-center py-8 space-y-3">
+                  <Shield className="w-10 h-10 mx-auto text-gray-600" />
+                  <p className="text-sm text-gray-400">
+                    Sign in to access profile settings, privacy controls, and key bindings.
+                  </p>
+                  <button
+                    onClick={() => { onClose(); onOpenAuth(); }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition"
+                  >
+                    Sign In / Register
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Display Name */}
+                  <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-800 space-y-2.5">
+                    <label htmlFor="settings-display-name" className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                      Display Name
+                    </label>
+                    <input
+                      id="settings-display-name"
+                      type="text"
+                      value={displayNameInput}
+                      onChange={(e) => setDisplayNameInput(e.target.value)}
+                      maxLength={32}
+                      placeholder="2–32 characters"
+                      className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition"
+                    />
+                    <p className="text-[10px] text-gray-500">
+                      {displayNameInput.trim().length}/32 characters (minimum 2)
+                    </p>
+                  </div>
+
+                  {/* Preferred Instrument */}
+                  <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-800 space-y-2.5">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                      Preferred Instrument
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setPreferredInstrument('piano')}
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition border ${
+                          preferredInstrument === 'piano'
+                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+                            : 'bg-gray-950 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                        }`}
+                      >
+                        <Piano className="w-4 h-4" />
+                        Piano Tiles
+                      </button>
+                      <button
+                        onClick={() => setPreferredInstrument('guitar')}
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition border ${
+                          preferredInstrument === 'guitar'
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                            : 'bg-gray-950 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                        }`}
+                      >
+                        <Guitar className="w-4 h-4" />
+                        Guitar Tiles
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Profile Visibility */}
+                  <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        {isPublicSetting ? (
+                          <Eye className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-rose-400" />
+                        )}
+                        <div>
+                          <span className="text-xs font-bold text-white">Profile Visibility</span>
+                          <p className="text-[10px] text-gray-500">
+                            {isPublicSetting ? 'Your profile is visible on leaderboards and to other players.' : 'Your profile is hidden from leaderboards and search results.'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsPublicSetting((prev) => !prev)}
+                        className={`relative w-10 h-5 rounded-full transition-colors ${
+                          isPublicSetting ? 'bg-emerald-500' : 'bg-gray-700'
+                        }`}
+                        role="switch"
+                        aria-checked={isPublicSetting}
+                        aria-label="Toggle profile visibility"
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                            isPublicSetting ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Save Settings Button */}
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings || displayNameInput.trim().length < 2}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-gray-800 disabled:text-gray-500 text-black text-xs font-bold uppercase tracking-wider transition"
+                  >
+                    {isSavingSettings ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {isSavingSettings ? 'Saving...' : 'Save Profile Settings'}
+                  </button>
+
+                  {/* Settings Status Message */}
+                  {settingsMessage && (
+                    <div
+                      className={`p-3 rounded-xl text-xs font-semibold text-center ${
+                        settingsMessage.isError
+                          ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+                          : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                      }`}
+                    >
+                      {settingsMessage.text}
+                    </div>
+                  )}
+
+                  {/* Keyboard Controls */}
+                  <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Keyboard className="w-4 h-4 text-cyan-400" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Key Bindings</span>
+                      </div>
+                      {hasCustomKeys && (
+                        <button
+                          onClick={resetKeyBindings}
+                          className="flex items-center gap-1 text-[10px] font-bold text-amber-400 hover:text-amber-300 transition"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-500">
+                      Click a lane key, then press any key to rebind it. Keys are stored locally.
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {keyBindings.map((key, lane) => (
+                        <button
+                          key={lane}
+                          onClick={() => setRebindingLane(rebindingLane === lane ? null : lane)}
+                          onKeyDown={(e) => {
+                            if (rebindingLane === lane && e.key.length === 1) {
+                              e.preventDefault();
+                              setKeyBinding(lane, e.key);
+                              setRebindingLane(null);
+                            }
+                          }}
+                          className={`flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-bold transition border ${
+                            rebindingLane === lane
+                              ? 'bg-amber-500/20 border-amber-500 text-amber-300 animate-pulse'
+                              : 'bg-gray-950 border-gray-700 text-gray-300 hover:border-gray-500'
+                          }`}
+                          aria-label={`Lane ${lane + 1} key binding: ${key.toUpperCase()}`}
+                        >
+                          <span className="text-[9px] text-gray-500 uppercase">Lane {lane + 1}</span>
+                          <span className="text-lg font-black">{key.toUpperCase()}</span>
+                          {rebindingLane === lane && (
+                            <span className="text-[8px] text-amber-400">Press key...</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Data Retention & Account Deletion */}
+                  <div className="p-4 rounded-2xl bg-gray-900/60 border border-rose-500/20 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Privacy & Data</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                      Your match history and competitive records are retained for tournament integrity even after account deletion.
+                      Personal profile information (display name, avatar, email) is permanently scrubbed.
+                      Friend relationships and follows are removed immediately.
+                    </p>
+
+                    {!showDeleteConfirm ? (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold hover:bg-rose-500/20 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete My Account
+                      </button>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-rose-300 font-semibold">
+                            This action is permanent. Your account, profile data, and login credentials will be permanently deleted.
+                            Match records are anonymized and retained for competitive integrity.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="flex-1 py-2 rounded-lg bg-gray-800 text-gray-300 text-xs font-bold hover:bg-gray-700 transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleDeleteAccount}
+                            disabled={isDeletingAccount}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 text-white text-xs font-bold transition"
+                          >
+                            {isDeletingAccount ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                            {isDeletingAccount ? 'Deleting...' : 'Confirm Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}

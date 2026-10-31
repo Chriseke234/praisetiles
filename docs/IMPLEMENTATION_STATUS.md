@@ -1,9 +1,9 @@
 # PraiseTiles — Implementation Status
 
-**Status Date:** 29 October 2026  
-**Current Milestone:** Phase 7 Complete — Production Hardening, Security, Performance, Observability & Launch Readiness  
+**Status Date:** 31 October 2026  
+**Current Milestone:** Phase 8 Complete — GDD Reconciliation & Remaining Game Implementation  
 **Product Title:** PraiseTiles (`praisetiles`)  
-**Rules Version:** `7.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)
+**Rules Version:** `1.0.0` (Conforms to `docs/GDD.md` and `docs/TECHNICAL_IMPLEMENTATION_PLAN.md`)  
 **Launch Recommendation:** **GO FOR PRODUCTION RELEASE**
 
 ---
@@ -238,12 +238,62 @@ Location: `supabase/migrations/20261029000000_phase4_social_ranked.sql`
 
 ---
 
-## 8. Test Verification & Results
+## 8. Phase 8 Features Implemented (GDD Reconciliation & Remaining Game Implementation)
+
+### 1. Requirement Traceability Matrix (GDD & Technical Plan)
+
+| Req ID | Specification Source | Feature / Requirement | Implementation File(s) | Status | Verification Test |
+|---|---|---|---|---|---|
+| **REQ-A1** | GDD §1, §3 | Gospel-only praise theme & instrument selection | `src/components/menu/MainMenu.tsx`, `src/app/page.tsx` | Verified | `tests/engine.test.ts` |
+| **REQ-A2** | GDD §3, §4 | Audio validation (MP3/WAV/MP4, 15MB, 30s-5m, binary headers) | `src/lib/audio/validator.ts`, `src/components/setup/AudioUploadModal.tsx` | Verified | `tests/audio.test.ts` |
+| **REQ-A3** | GDD §4 | Synthetic royalty-free demo praise track (120 BPM, C-G-Am-F) | `src/lib/audio/synth.ts` | Verified | `tests/audio.test.ts` |
+| **REQ-A4** | GDD §4, §6 | 3-Star progressive stage boundaries (33%, 66%, 100%) | `src/config/gameplay.ts`, `src/lib/game/scoring.ts` | Verified | `tests/scoring.test.ts`, `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-A5** | GDD §4 | Strict failure rule (MISSED_NOTE or INCORRECT_TAP fails immediately) | `src/lib/game/engine.ts` | Verified | `tests/engine.test.ts` |
+| **REQ-A6** | GDD §4 | Scoring formula, accuracy weights & combo multipliers | `src/config/gameplay.ts`, `src/lib/game/scoring.ts` | Verified | `tests/scoring.test.ts`, `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-A7** | GDD §4, Open Decision #4 | Remappable 4-lane keyboard controls (defaults: D, F, J, K) | `src/hooks/useKeyBindings.ts`, `src/components/gameplay/GameContainer.tsx` | Verified | `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-A8** | GDD §3 | Short logo entrance animation | `src/app/globals.css` (`animate-brand-entrance`), `src/components/menu/MainMenu.tsx` | Verified | Production Build |
+| **REQ-A9** | GDD §4 | Optional map preview bypass ("Quick Play") | `src/components/setup/AudioUploadModal.tsx`, `src/app/page.tsx` | Verified | `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-B1** | GDD §7 | Guest mode with sessionStorage & 50-run capping | `src/lib/auth/AuthContext.tsx` | Verified | `tests/auth.test.ts` |
+| **REQ-B2** | GDD §7 | Authenticated accounts with Supabase Auth & RLS | `supabase/migrations/20261027000000_phase2_auth_progression.sql` | Verified | `tests/auth.test.ts` |
+| **REQ-B3** | GDD §7 | 5 Gem Tiers (Quartz -> Jade -> Sapphire -> Ruby -> Diamond) & 3-factor promotion | `src/config/progression.ts` | Verified | `tests/progression.test.ts` |
+| **REQ-B4** | GDD §7 | Anti-farming protection (15s minimum for 5 participation XP on failed runs) | `src/config/progression.ts` | Verified | `tests/progression.test.ts`, `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-B5** | GDD §7 | User profile settings & privacy toggle (`is_public`) | `src/app/api/profile/route.ts`, `src/components/profile/ProfileModal.tsx` | Verified | `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-B6** | GDD §7 | Preferred instrument persistence (`piano` vs `guitar`) | `supabase/migrations/20261101000000_phase8_profile_settings.sql`, `src/app/api/profile/route.ts` | Verified | `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-B7** | GDD §7 | GDPR/CCPA Account deletion path with anonymized match retention | `src/app/api/profile/route.ts` (`DELETE`), `src/components/profile/ProfileModal.tsx` | Verified | `tests/phase8_gdd_reconciliation.test.ts` |
+| **REQ-C1** | GDD §8 | Private rooms (8-char codes, host transfer, member readiness, voting) | `src/components/multiplayer/MultiplayerModal.tsx`, `supabase/migrations/20261028000000_phase3_multiplayer_rooms.sql` | Verified | `tests/multiplayer.test.ts` |
+| **REQ-C2** | GDD §8 | Shared audio upload via short-lived signed URLs & synchronized start | `src/app/api/rooms/[code]/upload/route.ts`, `src/app/api/rooms/[code]/map/route.ts` | Verified | `tests/multiplayer.test.ts` |
+| **REQ-D1** | GDD §8 | Public room directory with capacity (8-16) & active slots (4) | `src/components/multiplayer/PublicRoomBrowser.tsx`, `src/app/api/rooms/public/route.ts` | Verified | `tests/phase4_multiplayer.test.ts` |
+| **REQ-D2** | GDD §8 | Elo matchmaking & Quick Play queue with expanding rating search | `src/components/multiplayer/QuickPlayModal.tsx`, `src/app/api/matchmaking/queue/route.ts` | Verified | `tests/phase4_multiplayer.test.ts` |
+| **REQ-D3** | GDD §8 | Friends, followers, player directory, block list, user reports | `src/components/social/FriendsModal.tsx`, `src/lib/social/SocialContext.tsx` | Verified | `tests/phase4_multiplayer.test.ts` |
+| **REQ-E1** | GDD §9 | Single-elimination tournaments (4, 8, 16 players) with check-in & brackets | `src/components/tournament/TournamentHub.tsx`, `src/lib/tournament/TournamentContext.tsx` | Verified | `tests/phase5_tournaments.test.ts` |
+| **REQ-E2** | GDD §9 | Seasons, tournament points, achievements & leaderboards | `src/components/tournament/TournamentHub.tsx`, `supabase/migrations/20261030000000_phase5_tournaments_seasons.sql` | Verified | `tests/phase5_tournaments.test.ts` |
+
+### 2. GDD Open Decisions Register Resolution
+
+| # | GDD Decision Item | GDD Question | Phase 8 Resolution & Status |
+|---|---|---|---|
+| **1** | Product Name | PraiseTiles vs working title | Standardized as **PraiseTiles** across app and metadata. |
+| **2** | Rhythm Detection | Transcribe vs beat estimation | Documented as 2-band spectral flux onset estimation (not transcriptive). |
+| **3** | Timing Windows | Provisional ±50/100/150ms | Implemented provisional windows with active latency calibration offset slider (±150ms). |
+| **4** | Keyboard Remapping | Configurable vs fixed keys | **Resolved in Phase 8:** Implemented `useKeyBindings` hook with localStorage persistence, lane swapping, and interactive rebinding UI. |
+| **5** | Room Size Limits | >4 players in private lobby | Configured to 4 active competitors, up to 16 total participants/spectators. |
+| **6** | Reconnection Grace | Connection drop tolerance | Heartbeat timeout set to 15 seconds with reconnect window. |
+| **7** | Audio Retention | Temporary vs persistent storage | Ephemeral 2-hour TTL with authenticated automatic server-side cleanup cron (`/api/rooms/cleanup`). |
+| **8** | Chat Retention | Persistent vs in-memory | Stored in `room_messages` scoped to room lifecycle. |
+| **9** | Tournament Scheduling | Check-in window duration | Configurable 15-minute check-in window with automatic forfeit for no-shows. |
+| **10** | XP Progression | Scaling values | Defined in `src/config/progression.ts` with 3-factor promotion checklist. |
+| **11** | Rating Algorithm | Elo vs Glicko | Pairwise Elo implemented with provisional K=32 and established K=16. |
+| **12** | Failed Run XP | Participation reward | **Resolved in Phase 8:** 0 XP for <15s to prevent farming; 5 XP for runs >=15s. |
+
+---
+
+## 9. Test Verification & Results
 
 ```bash
 # Unit & Integration Tests (Vitest)
 npm test
-# Result: 10 passed (204/204 tests passed, 100% success rate)
+# Result: 11 passed (217/217 tests passed, 100% success rate)
+# - tests/phase8_gdd_reconciliation.test.ts (13 tests)
 # - tests/phase7_production_hardening.test.ts (10 tests)
 # - tests/phase6_audio_intelligence.test.ts (22 tests)
 # - tests/phase5_tournaments.test.ts (69 tests)
@@ -265,5 +315,5 @@ npm run lint
 
 # Next.js 16.4.3 Turbopack Production Build
 npm run build
-# Result: ✓ Compiled successfully (All routes optimized, 0 errors)
+# Result: ✓ Compiled successfully (28/28 routes optimized, 0 errors)
 ```

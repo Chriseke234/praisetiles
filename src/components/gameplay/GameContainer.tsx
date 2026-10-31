@@ -12,6 +12,7 @@ import {
 import { GameEngine } from '@/lib/game/engine';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { getCurrentStarStage, createInitialScoreState } from '@/lib/game/scoring';
+import { useKeyBindings } from '@/hooks/useKeyBindings';
 import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { Volume2, VolumeX, Star, Zap, ArrowLeft, Sliders } from 'lucide-react';
@@ -60,6 +61,9 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     return 0;
   });
   const [showCalibration, setShowCalibration] = useState(false);
+
+  // Configurable keyboard bindings (resolves GDD Open Decision #4)
+  const { keys: keyBindings, keyToLane } = useKeyBindings();
 
   const engineRef = useRef<GameEngine | null>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -129,20 +133,17 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     }
   }, []);
 
-  // Keyboard controls listener (D, F, J, K)
+  // Keyboard controls listener (configurable via useKeyBindings)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      const key = e.key.toLowerCase();
-      if (key === 'd') handleLaneTap(0);
-      else if (key === 'f') handleLaneTap(1);
-      else if (key === 'j') handleLaneTap(2);
-      else if (key === 'k') handleLaneTap(3);
+      const lane = keyToLane(e.key);
+      if (lane !== -1) handleLaneTap(lane);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleLaneTap]);
+  }, [handleLaneTap, keyToLane]);
 
   // Countdown & Audio Start sequence
   useEffect(() => {
@@ -331,6 +332,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             activeLanes={activeLanes}
             onLaneTap={handleLaneTap}
             reducedMotion={reducedMotion}
+            keyLabels={keyBindings}
           />
         ) : (
           <GuitarTilesView
@@ -339,6 +341,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             activeLanes={activeLanes}
             onLaneTap={handleLaneTap}
             reducedMotion={reducedMotion}
+            keyLabels={keyBindings}
           />
         )}
 

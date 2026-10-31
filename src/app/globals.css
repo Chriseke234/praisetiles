@@ -52,3 +52,36 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Logo entrance animation — GDD §3 "Show a short logo animation" */
+@keyframes brand-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(8px);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-2px);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-brand-entrance {
+  animation: brand-entrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Fade-in utility for modals and overlays */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out both;
+}

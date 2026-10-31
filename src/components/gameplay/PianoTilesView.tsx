@@ -10,6 +10,8 @@ interface PianoTilesViewProps {
   activeLanes: boolean[];
   onLaneTap: (lane: number) => void;
   reducedMotion: boolean;
+  /** Configurable key labels for each lane (defaults to D/F/J/K) */
+  keyLabels?: string[];
 }
 
 export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
@@ -18,9 +20,10 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
   activeLanes,
   onLaneTap,
   reducedMotion,
+  keyLabels,
 }) => {
   const approachTime = GAMEPLAY_CONFIG.APPROACH_TIME_SECONDS;
-  const laneKeys = ['D', 'F', 'J', 'K'];
+  const laneKeys = keyLabels?.map((k) => k.toUpperCase()) ?? ['D', 'F', 'J', 'K'];
 
   // Filter notes that are within visible approach window and not yet hit
   const visibleNotes = notes.filter((n) => {

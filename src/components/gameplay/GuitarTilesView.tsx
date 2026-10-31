@@ -10,6 +10,8 @@ interface GuitarTilesViewProps {
   activeLanes: boolean[];
   onLaneTap: (lane: number) => void;
   reducedMotion: boolean;
+  /** Configurable key labels for each lane (defaults to D/F/J/K) */
+  keyLabels?: string[];
 }
 
 export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
@@ -18,9 +20,10 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
   activeLanes,
   onLaneTap,
   reducedMotion,
+  keyLabels,
 }) => {
   const approachTime = GAMEPLAY_CONFIG.APPROACH_TIME_SECONDS;
-  const laneKeys = ['D', 'F', 'J', 'K'];
+  const laneKeys = keyLabels?.map((k) => k.toUpperCase()) ?? ['D', 'F', 'J', 'K'];
 
   // Visible unhit notes within approach window
   const visibleNotes = notes.filter((n) => {

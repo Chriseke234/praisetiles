@@ -13,6 +13,7 @@ export interface UserProfile {
   displayName: string;
   avatarUrl?: string | null;
   isPublic: boolean;
+  preferredInstrument: InstrumentType;
   createdAt: string;
   updatedAt: string;
 }

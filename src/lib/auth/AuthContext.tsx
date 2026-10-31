@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: profileRes.data.display_name,
           avatarUrl: profileRes.data.avatar_url,
           isPublic: profileRes.data.is_public,
+          preferredInstrument: profileRes.data.preferred_instrument ?? 'piano',
           createdAt: profileRes.data.created_at,
           updatedAt: profileRes.data.updated_at,
         });

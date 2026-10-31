@@ -69,8 +69,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
       {/* Top Navbar */}
       <header className="relative z-10 w-full max-w-4xl flex items-center justify-between border-b border-gray-800/80 pb-4">
-        {/* Logo and Brand */}
-        <div className="flex items-center gap-3">
+        {/* Logo and Brand — entrance animation per GDD §3 */}
+        <div className="flex items-center gap-3 animate-brand-entrance">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center glow-gold">
             <Music className="w-5 h-5 text-black stroke-[2.5]" />
           </div>

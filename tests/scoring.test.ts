@@ -92,9 +92,9 @@ describe('Scoring & Judgement Engine', () => {
     it('accumulates score with combo multiplier and tracks max combo', () => {
       let state = createInitialScoreState();
 
-      // First hit: Perfect -> 1000 * 1.0 = 1000
+      // First hit: Perfect -> 100 * 1.0 = 100
       state = applyHitToScoreState(state, 'PERFECT');
-      expect(state.score).toBe(1000);
+      expect(state.score).toBe(100);
       expect(state.combo).toBe(1);
       expect(state.maxCombo).toBe(1);
 
@@ -103,12 +103,12 @@ describe('Scoring & Judgement Engine', () => {
         state = applyHitToScoreState(state, 'PERFECT');
       }
       expect(state.combo).toBe(9);
-      expect(state.score).toBe(9000);
+      expect(state.score).toBe(900);
 
-      // 10th hit: Perfect with 1.2x multiplier -> 1000 * 1.2 = 1200
+      // 10th hit: Perfect with 1.2x multiplier -> 100 * 1.2 = 120
       state = applyHitToScoreState(state, 'PERFECT');
       expect(state.combo).toBe(10);
-      expect(state.score).toBe(10200);
+      expect(state.score).toBe(1020);
       expect(state.maxCombo).toBe(10);
     });
 

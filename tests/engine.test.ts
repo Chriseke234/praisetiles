@@ -56,7 +56,7 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     expect(noteJudgedMock).toHaveBeenCalledWith('n-0', 'PERFECT', 0);
 
     const scoreState = engine.getScoreState();
-    expect(scoreState.score).toBe(1000);
+    expect(scoreState.score).toBe(100);
     expect(scoreState.combo).toBe(1);
     expect(scoreState.perfectCount).toBe(1);
     expect(scoreState.runAccuracy).toBe(100.0);
@@ -149,7 +149,7 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     engine.start();
     engine.update(2.0);
     engine.handleLaneInput(0);
-    expect(engine.getScoreState().score).toBe(1000);
+    expect(engine.getScoreState().score).toBe(100);
   });
 
   it('both piano and guitar use exact same map timestamps and evaluation', () => {

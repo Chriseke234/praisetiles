@@ -77,9 +77,9 @@ describe('Phase 9 — Journey A: Guest Solo Play', () => {
     expect(state.combo).toBe(0);
     expect(state.runAccuracy).toBe(100);
 
-    // Hit 1: PERFECT -> 1000 * 1.0x = 1000
+    // Hit 1: PERFECT -> 100 * 1.0x = 100
     state = applyHitToScoreState(state, 'PERFECT');
-    expect(state.score).toBe(1000);
+    expect(state.score).toBe(100);
     expect(state.combo).toBe(1);
     expect(state.perfectCount).toBe(1);
 
@@ -88,9 +88,9 @@ describe('Phase 9 — Journey A: Guest Solo Play', () => {
       state = applyHitToScoreState(state, 'PERFECT');
     }
     expect(state.combo).toBe(10);
-    // 10th hit gets 1.2x multiplier = 1000 * 1.2 = 1200
-    // Total: 9 * 1000 + 1200 = 10200
-    expect(state.score).toBe(10200);
+    // 10th hit gets 1.2x multiplier = 100 * 1.2 = 120
+    // Total: 9 * 100 + 120 = 1020
+    expect(state.score).toBe(1020);
     expect(state.runAccuracy).toBe(100);
 
     // A MISS resets combo to 0 and counts against weighted accuracy

@@ -34,11 +34,11 @@ export const GAMEPLAY_CONFIG = {
     GOOD_SEC: 0.150,    // ±150ms
   },
 
-  // Base Points per Hit Grade
+  // Base Points per Hit Grade (Arcade Standard: 100 / 75 / 50)
   BASE_POINTS: {
-    PERFECT: 1000,
-    GREAT: 750,
-    GOOD: 500,
+    PERFECT: 100,
+    GREAT: 75,
+    GOOD: 50,
     MISS: 0,
   },
 

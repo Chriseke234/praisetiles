@@ -33,9 +33,9 @@ describe('Phase 8: GDD Core Gameplay Rules Reconciliation', () => {
   });
 
   it('aligns base scoring and accuracy weights with GDD Section 4', () => {
-    expect(GAMEPLAY_CONFIG.BASE_POINTS.PERFECT).toBe(1000);
-    expect(GAMEPLAY_CONFIG.BASE_POINTS.GREAT).toBe(750);
-    expect(GAMEPLAY_CONFIG.BASE_POINTS.GOOD).toBe(500);
+    expect(GAMEPLAY_CONFIG.BASE_POINTS.PERFECT).toBe(100);
+    expect(GAMEPLAY_CONFIG.BASE_POINTS.GREAT).toBe(75);
+    expect(GAMEPLAY_CONFIG.BASE_POINTS.GOOD).toBe(50);
     expect(GAMEPLAY_CONFIG.BASE_POINTS.MISS).toBe(0);
 
     expect(GAMEPLAY_CONFIG.ACCURACY_WEIGHTS.PERFECT).toBe(1.00);

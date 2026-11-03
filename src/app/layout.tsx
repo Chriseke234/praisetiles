@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PraiseTiles — Browser-First Gospel Rhythm Game",
   description: "Experience the rhythm of gospel and praise music across Piano and Guitar in a modern browser-first rhythm arena.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

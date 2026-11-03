@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -21,9 +22,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   onClick,
 }) => {
   const iconDimensions = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12',
+    sm: { cls: 'w-8 h-8', px: 32 },
+    md: { cls: 'w-10 h-10', px: 40 },
+    lg: { cls: 'w-12 h-12', px: 48 },
   }[size];
 
   const titleSizes = {
@@ -45,48 +46,16 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         onClick ? 'cursor-pointer select-none' : ''
       } ${className}`}
     >
-      {/* Stylized Gospel Rhythm SVG Icon */}
-      <div
-        className={`${iconDimensions} rounded-xl bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 flex items-center justify-center p-1.5 shadow-md shadow-amber-500/20 border border-amber-400/40 shrink-0 relative overflow-hidden`}
-      >
-        {/* Subtle ambient light shimmer inside crest */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-
-        <svg
-          viewBox="0 0 40 40"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full text-black drop-shadow-sm"
-          aria-hidden="true"
-        >
-          {/* 4 Vertical Rhythm Tile Columns (representing lanes) */}
-          <rect x="7" y="10" width="4" height="20" rx="1.5" fill="currentColor" fillOpacity="0.25" />
-          <rect x="14" y="6" width="4" height="28" rx="1.5" fill="currentColor" fillOpacity="0.35" />
-          <rect x="22" y="6" width="4" height="28" rx="1.5" fill="currentColor" fillOpacity="0.35" />
-          <rect x="29" y="10" width="4" height="20" rx="1.5" fill="currentColor" fillOpacity="0.25" />
-
-          {/* Central Worship Cross Core (elevated stroke) */}
-          <path
-            d="M20 5V35M11 15H29"
-            stroke="currentColor"
-            strokeWidth="3.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Musical Rhythm Beam Over Cross */}
-          <circle cx="14" cy="27" r="3.2" fill="currentColor" />
-          <circle cx="26" cy="24" r="3.2" fill="currentColor" />
-          <path
-            d="M16.5 27V12.5C16.5 11.5 17.5 11 18.5 11.5L28.5 15.5"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          />
-
-          {/* Cyan rhythm hit sparkle accent */}
-          <circle cx="20" cy="15" r="1.5" fill="#22D3EE" />
-        </svg>
+      {/* PraiseTiles Logo Image Icon */}
+      <div className={`${iconDimensions.cls} rounded-xl overflow-hidden shrink-0 shadow-md shadow-purple-500/20`}>
+        <Image
+          src="/logo.png"
+          alt="PraiseTiles Logo"
+          width={iconDimensions.px}
+          height={iconDimensions.px}
+          className="w-full h-full object-cover"
+          priority
+        />
       </div>
 
       {/* Brand Typography */}

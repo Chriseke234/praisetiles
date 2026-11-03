@@ -115,6 +115,106 @@ export function estimateTempoFromFlux(
 }
 
 /**
+ * Pure function mapping onset candidates to 4-lane notes with short & long sustain notes
+ * and enforcing the Long-Tile Mutual Exclusivity Rule.
+ */
+export function mapCandidatesToNotes(
+  candidates: Array<{ time: number; confidence: number; bandType?: 'low' | 'high' | 'full' }>,
+  duration: number,
+  star1End: number,
+  star2End: number,
+  profile: typeof AUDIO_CONFIG.DIFFICULTY_PROFILES['standard'] = AUDIO_CONFIG.DIFFICULTY_PROFILES.standard
+): NoteV2[] {
+  const notes: NoteV2[] = [];
+  let noteIndex = 0;
+  let lastNoteTime = 0;
+  let lastLane = 1;
+  let activeSustainUntil = 0;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const time = candidate.time;
+    const bandType = candidate.bandType ?? 'full';
+
+    // RULE: When a long tile is active, suppress competing note generation
+    if (time < activeSustainUntil) {
+      continue;
+    }
+
+    const stage = time < star1End ? 1 : time < star2End ? 2 : 3;
+
+    const minInterval =
+      stage === 1
+        ? profile.minIntervalStar1Sec
+        : stage === 2
+        ? profile.minIntervalStar2Sec
+        : profile.minIntervalStar3Sec;
+
+    if (time - lastNoteTime < minInterval) {
+      continue;
+    }
+
+    // Determine if this note qualifies as a long (sustained) tile:
+    let nextCandidateTime = duration;
+    for (let j = i + 1; j < candidates.length; j++) {
+      if (candidates[j].time - time >= minInterval) {
+        nextCandidateTime = candidates[j].time;
+        break;
+      }
+    }
+    const gap = nextCandidateTime - time;
+
+    const isLongSustainEligible =
+      gap >= 0.9 &&
+      candidate.confidence >= 0.65 &&
+      time + 0.6 <= duration &&
+      (noteIndex % 4 === 0 || bandType === 'low');
+
+    let noteType: 'short' | 'long' = 'short';
+    let sustainDuration: number | undefined = undefined;
+
+    if (isLongSustainEligible) {
+      noteType = 'long';
+      sustainDuration = Math.min(1.8, Math.max(0.6, Math.round((gap - 0.25) * 10) / 10));
+      activeSustainUntil = time + sustainDuration + 0.15;
+    }
+
+    const allowedLanes =
+      stage === 1
+        ? profile.allowedLanesStar1
+        : stage === 2
+        ? profile.allowedLanesStar2
+        : profile.allowedLanesStar3;
+
+    const laneChoices = allowedLanes.filter((l) => l !== lastLane);
+    const validChoices = laneChoices.length > 0 ? laneChoices : allowedLanes;
+
+    const bandOffset = bandType === 'low' ? 0 : bandType === 'high' ? 2 : 1;
+    const pickIdx = (Math.floor(time * 10) + noteIndex + bandOffset) % validChoices.length;
+    const lane = validChoices[pickIdx];
+
+    notes.push({
+      id: `n-${noteIndex++}`,
+      lane,
+      time: Math.round(time * 1000) / 1000,
+      hit: false,
+      grade: null,
+      type: noteType,
+      duration: sustainDuration,
+      sustainProgress: noteType === 'long' ? 0 : undefined,
+      sustainState: noteType === 'long' ? 'idle' : undefined,
+      confidence: candidate.confidence,
+      bandType,
+    });
+
+    lastNoteTime = time;
+    lastLane = lane;
+  }
+
+  return notes;
+}
+
+/**
  * Analyzes decoded AudioBuffer using 2-Band Spectral Flux with adaptive local windowing
  * and produces a versioned 4-lane RhythmMapV2 with 3-star progression.
  */
@@ -289,65 +389,15 @@ export function generateRhythmMapFromAudio(
     }
   }
 
-  // 7. Map Onsets into 3-Star Density Stages across 4 Lanes
-  const notes: NoteV2[] = [];
-  let noteIndex = 0;
-  let lastNoteTime = 0;
-  let lastLane = 1;
-
-  for (const candidate of filteredCandidates) {
-    const time = candidate.time;
-    const stage = time < star1End ? 1 : time < star2End ? 2 : 3;
-
-    // Stage min interval derived from active difficulty profile
-    const minInterval =
-      stage === 1
-        ? profile.minIntervalStar1Sec
-        : stage === 2
-        ? profile.minIntervalStar2Sec
-        : profile.minIntervalStar3Sec;
-
-    if (time - lastNoteTime < minInterval) {
-      continue;
-    }
-
-    // Lane Selection based on stage and allowed lanes
-    const allowedLanes =
-      stage === 1
-        ? profile.allowedLanesStar1
-        : stage === 2
-        ? profile.allowedLanesStar2
-        : profile.allowedLanesStar3;
-
-    // Avoid picking identical lane consecutively when possible
-    const candidates = allowedLanes.filter((l) => l !== lastLane);
-    const validChoices = candidates.length > 0 ? candidates : allowedLanes;
-
-    // Deterministic selection based on candidate time, note index, and band
-    const bandOffset = candidate.bandType === 'low' ? 0 : candidate.bandType === 'high' ? 2 : 1;
-    const pickIdx = (Math.floor(time * 10) + noteIndex + bandOffset) % validChoices.length;
-    const lane = validChoices[pickIdx];
-
-    notes.push({
-      id: `n-${noteIndex++}`,
-      lane,
-      time: Math.round(time * 1000) / 1000,
-      hit: false,
-      grade: null,
-      confidence: candidate.confidence,
-      bandType: candidate.bandType,
-    });
-
-    lastNoteTime = time;
-    lastLane = lane;
-  }
+  // 7. Map Onsets into 3-Star Density Stages across 4 Lanes (Short & Sustained Long Tiles)
+  const notes: NoteV2[] = mapCandidatesToNotes(filteredCandidates, duration, star1End, star2End, profile);
 
   // 8. Fallback for Extremely Sparse / Ambient Tracks
   // If track has fewer than MIN_TOTAL_NOTES, synthesize musically placed beats
   if (notes.length < AUDIO_CONFIG.VALIDATION.MIN_TOTAL_NOTES) {
     notes.length = 0;
-    noteIndex = 0;
-    lastLane = 0;
+    let noteIndex = 0;
+    let lastLane = 0;
     const fallbackBpm = estimatedBpm ?? 120;
     const beatInterval = 60 / fallbackBpm;
     let t = 2.0;
@@ -358,18 +408,26 @@ export function generateRhythmMapFromAudio(
       const allowedLanes = stage === 1 ? profile.allowedLanesStar1 : [0, 1, 2, 3];
       const lane = allowedLanes[(lastLane + 1) % allowedLanes.length];
 
+      // Introduce occasional sustained note in slower sections
+      const isLong = step >= 1.2 && noteIndex % 5 === 0;
+      const sustainDur = isLong ? Math.min(1.5, Math.round((step - 0.3) * 10) / 10) : undefined;
+
       notes.push({
         id: `fb-${noteIndex++}`,
         lane,
         time: Math.round(t * 1000) / 1000,
         hit: false,
         grade: null,
+        type: isLong ? 'long' : 'short',
+        duration: sustainDur,
+        sustainProgress: isLong ? 0 : undefined,
+        sustainState: isLong ? 'idle' : undefined,
         confidence: 0.7,
         bandType: 'full',
       });
 
       lastLane = lane;
-      t += step;
+      t += isLong && sustainDur ? sustainDur + 0.3 : step;
     }
   }
 

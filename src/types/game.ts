@@ -7,7 +7,11 @@ export type InstrumentType = 'piano' | 'guitar';
 
 export type HitGrade = 'PERFECT' | 'GREAT' | 'GOOD' | 'MISS';
 
-export type FailureReason = 'MISSED_NOTE' | 'INCORRECT_TAP' | 'AUDIO_ERROR' | null;
+export type NoteType = 'short' | 'long';
+
+export type SustainState = 'idle' | 'holding' | 'completed' | 'released_early';
+
+export type FailureReason = 'MISSED_NOTE' | 'INCORRECT_TAP' | 'AUDIO_ERROR' | 'MISSED_SUSTAIN' | null;
 
 export type GameStatus =
   | 'MENU'
@@ -24,6 +28,10 @@ export interface Note {
   time: number; // Target timestamp in seconds from audio start
   hit: boolean;
   grade?: HitGrade | null;
+  type?: NoteType; // 'short' (default) or 'long' (sustained note)
+  duration?: number; // Duration of sustain in seconds (for 'long' notes)
+  sustainProgress?: number; // 0.0 to 1.0 holding progress
+  sustainState?: SustainState;
 }
 
 export interface RhythmMapStageBoundaries {

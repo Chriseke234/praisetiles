@@ -12,7 +12,6 @@ import {
 import { GameEngine } from '@/lib/game/engine';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { getCurrentStarStage, createInitialScoreState } from '@/lib/game/scoring';
-import { useKeyBindings } from '@/hooks/useKeyBindings';
 import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { Volume2, VolumeX, Star, Zap, ArrowLeft, Sliders } from 'lucide-react';
@@ -61,9 +60,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     return 0;
   });
   const [showCalibration, setShowCalibration] = useState(false);
-
-  // Configurable keyboard bindings (resolves GDD Open Decision #4)
-  const { keys: keyBindings, keyToLane } = useKeyBindings();
 
   const engineRef = useRef<GameEngine | null>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -126,24 +122,24 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     };
   }, [map, instrument, audioPlayer, onRunFinished]);
 
-  // Handle Lane Tap
-  const handleLaneTap = useCallback((lane: number) => {
+  // Direct Pointer Interaction Handlers (Touch & Mouse)
+  const handlePointerDown = useCallback((lane: number) => {
     if (engineRef.current) {
-      engineRef.current.handleLaneInput(lane);
+      engineRef.current.handlePointerDown(lane);
     }
   }, []);
 
-  // Keyboard controls listener (configurable via useKeyBindings)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const lane = keyToLane(e.key);
-      if (lane !== -1) handleLaneTap(lane);
-    };
+  const handlePointerUp = useCallback((lane: number) => {
+    if (engineRef.current) {
+      engineRef.current.handlePointerUp(lane);
+    }
+  }, []);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleLaneTap, keyToLane]);
+  const handlePointerMoveAcross = useCallback((lane: number) => {
+    if (engineRef.current) {
+      engineRef.current.handlePointerMoveAcross(lane);
+    }
+  }, []);
 
   // Countdown & Audio Start sequence
   useEffect(() => {
@@ -329,19 +325,23 @@ export const GameContainer: React.FC<GameContainerProps> = ({
           <PianoTilesView
             notes={notes}
             currentTime={currentAudioTime}
+            approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
-            onLaneTap={handleLaneTap}
+            onLanePointerDown={handlePointerDown}
+            onLanePointerUp={handlePointerUp}
+            onLanePointerEnter={handlePointerMoveAcross}
             reducedMotion={reducedMotion}
-            keyLabels={keyBindings}
           />
         ) : (
           <GuitarTilesView
             notes={notes}
             currentTime={currentAudioTime}
+            approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
-            onLaneTap={handleLaneTap}
+            onLanePointerDown={handlePointerDown}
+            onLanePointerUp={handlePointerUp}
+            onLanePointerEnter={handlePointerMoveAcross}
             reducedMotion={reducedMotion}
-            keyLabels={keyBindings}
           />
         )}
 

@@ -148,3 +148,60 @@ export function getCurrentStarStage(currentTime: number, duration: number): 1 | 
   }
   return 3;
 }
+
+/**
+ * Applies a sustain hold tick (+10 pts per 100ms held) to current score.
+ */
+export function applySustainTickToScoreState(current: ScoreState): ScoreState {
+  const multiplier = getComboMultiplier(current.combo);
+  const points = Math.round(GAMEPLAY_CONFIG.SUSTAIN.TICK_POINTS * multiplier);
+  return {
+    ...current,
+    score: current.score + points,
+  };
+}
+
+/**
+ * Applies sustain completion bonus (+100 pts) when a long note is held through its full duration.
+ */
+export function applySustainCompletionToScoreState(current: ScoreState): ScoreState {
+  const multiplier = getComboMultiplier(current.combo);
+  const bonus = Math.round(GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS * multiplier);
+  return {
+    ...current,
+    score: current.score + bonus,
+  };
+}
+
+/**
+ * Handles early release of a sustained note.
+ * Early release preserves points earned so far, but resets combo to 0.
+ */
+export function applyEarlyReleaseToScoreState(current: ScoreState): ScoreState {
+  return {
+    ...current,
+    combo: 0,
+  };
+}
+
+/**
+ * Calculates dynamic approach time (speed) based on song progression and tempo.
+ * Star 1 = 1.8s (comfortable intro)
+ * Star 2 = 1.45s (accelerated moderate pace)
+ * Star 3 = 1.15s (climax arcade speed)
+ */
+export function getDynamicApproachTime(currentTime: number, duration: number, estimatedBpm?: number | null): number {
+  const stage = getCurrentStarStage(currentTime, duration);
+  const baseTime =
+    stage === 1
+      ? GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_1
+      : stage === 2
+      ? GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_2
+      : GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_3;
+
+  // Modulate slightly based on BPM if detected (faster tempo = faster tiles)
+  if (estimatedBpm && estimatedBpm > 130) {
+    return Math.max(1.0, baseTime - 0.1);
+  }
+  return baseTime;
+}

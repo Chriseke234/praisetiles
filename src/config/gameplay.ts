@@ -77,6 +77,23 @@ export const GAMEPLAY_CONFIG = {
   // Visual & Fall timing
   // Time ahead of hit point that notes become visible and start falling down lane
   APPROACH_TIME_SECONDS: 1.8, // 1.8s for smooth readable approach on both mobile & desktop
+
+  // Dynamic approach times based on song progression and energy
+  DYNAMIC_APPROACH_TIMES: {
+    STAR_1: 1.8,  // Star 1 (0-33%): Calm / introductory approach
+    STAR_2: 1.45, // Star 2 (33-66%): Accelerated moderate pace
+    STAR_3: 1.15, // Star 3 (66-100%): High-energy arcade climax
+  },
+
+  // Long (Sustained) Tile Mechanics
+  SUSTAIN: {
+    MIN_DURATION_SECONDS: 0.5, // Minimum duration for sustained notes
+    MAX_DURATION_SECONDS: 2.0, // Maximum duration for sustained notes
+    TICK_INTERVAL_SECONDS: 0.1, // Hold evaluation tick every 100ms
+    TICK_POINTS: 10,           // Points awarded per tick held
+    COMPLETION_BONUS: 100,     // Full sustain completion bonus
+    EARLY_RELEASE_TOLERANCE_SEC: 0.1, // Allow releasing within 100ms of end
+  },
 } as const;
 
 export type GameplayConfig = typeof GAMEPLAY_CONFIG;

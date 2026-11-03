@@ -222,34 +222,37 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
   }, [gameStarted]);
 
   // -----------------------------------------------------------------------
-  // Keyboard controls
+  // Direct Pointer Interaction (Touch & Mouse)
   // -----------------------------------------------------------------------
-  const handleLaneTap = useCallback((lane: number) => {
+  const handlePointerDown = useCallback((lane: number) => {
     if (engineRef.current) {
-      engineRef.current.handleLaneInput(lane);
+      engineRef.current.handlePointerDown(lane);
     }
   }, []);
 
-  useEffect(() => {
-    const KEYS: Record<string, number> = { d: 0, f: 1, j: 2, k: 3 };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const lane = KEYS[e.key.toLowerCase()];
-      if (lane !== undefined) handleLaneTap(lane);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleLaneTap]);
+  const handlePointerUp = useCallback((lane: number) => {
+    if (engineRef.current) {
+      engineRef.current.handlePointerUp(lane);
+    }
+  }, []);
+
+  const handlePointerMoveAcross = useCallback((lane: number) => {
+    if (engineRef.current) {
+      engineRef.current.handlePointerMoveAcross(lane);
+    }
+  }, []);
 
   const currentStage = getCurrentStarStage(currentAudioTime, map.duration);
 
   const viewProps = {
     notes,
     currentTime: currentAudioTime,
+    approachTime: engineRef.current?.getDynamicApproachTime(),
     activeLanes,
-    latestJudgement,
     reducedMotion,
-    onLaneTap: handleLaneTap,
+    onLanePointerDown: handlePointerDown,
+    onLanePointerUp: handlePointerUp,
+    onLanePointerEnter: handlePointerMoveAcross,
   };
 
   return (

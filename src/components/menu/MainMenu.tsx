@@ -810,10 +810,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
           <div className="flex items-center gap-3">
             <p className="text-gray-400">
-              Touch or Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">D</kbd>{' '}
-              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-amber-300 font-mono text-[10px]">F</kbd>{' '}
-              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">J</kbd>{' '}
-              <kbd className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-[10px]">K</kbd>
+              Touch or Mouse: Tap and hold tiles to the rhythm
             </p>
             <button
               type="button"

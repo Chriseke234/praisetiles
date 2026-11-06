@@ -2,16 +2,33 @@
  * POST /api/rooms/create
  * Creates a private room and returns room_id + invite_code.
  * Requires an authenticated Supabase session (JWT in Authorization header).
+ *
+ * The invite code is now generated here in Node.js (crypto.randomBytes) and
+ * passed to the Supabase RPC as `p_invite_code`. This avoids the need for the
+ * pgcrypto extension (gen_random_bytes) on the database side.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
 import { CreateRoomResponse } from '@/types/room';
 import { InstrumentType } from '@/types/game';
 import { checkRateLimit, createRateLimitResponse, getClientIp, RATE_LIMIT_PRESETS } from '@/lib/security/rateLimiter';
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/**
+ * Generates a secure, URL-safe 6-character uppercase alphanumeric invite code.
+ * Uses Node.js built-in `crypto.randomBytes` — no external dependencies or DB extensions required.
+ */
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Unambiguous charset (no O/0, I/1)
+  const bytes = randomBytes(6);
+  return Array.from(bytes)
+    .map((b) => chars[b % chars.length])
+    .join('');
+}
 
 export async function POST(req: NextRequest) {
   // Rate limiting check
@@ -45,8 +62,12 @@ export async function POST(req: NextRequest) {
     // Default to piano if body is missing/malformed
   }
 
+  // Generate a unique invite code in JS — avoids gen_random_bytes() DB dependency
+  const inviteCode = generateInviteCode();
+
   const { data, error } = await supabase.rpc('create_room', {
-    p_instrument: instrument,
+    p_instrument:   instrument,
+    p_invite_code:  inviteCode,
   });
 
   if (error) {
@@ -57,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   const response: CreateRoomResponse = {
     roomId:     result.room_id,
-    inviteCode: result.invite_code,
+    inviteCode: result.invite_code ?? inviteCode,
   };
 
   return NextResponse.json(response, { status: 201 });

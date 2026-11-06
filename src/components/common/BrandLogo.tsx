@@ -47,7 +47,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       } ${className}`}
     >
       {/* PraiseTiles Logo Image Icon */}
-      <div className={`${iconDimensions.cls} rounded-xl overflow-hidden shrink-0 shadow-md shadow-purple-500/20`}>
+      <div className={`${iconDimensions.cls} rounded-xl overflow-hidden shrink-0 shadow-md shadow-purple-500/30 ring-1 ring-purple-500/30`}>
         <Image
           src="/logo.png"
           alt="PraiseTiles Logo"
@@ -61,7 +61,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       {/* Brand Typography */}
       <div>
         <h1
-          className={`${titleSizes} font-black tracking-wider bg-gradient-to-r from-amber-400 via-amber-200 to-cyan-400 bg-clip-text text-transparent leading-none`}
+          className={`${titleSizes} font-black tracking-wider bg-gradient-to-r from-amber-400 via-yellow-200 to-purple-300 bg-clip-text text-transparent leading-none`}
         >
           PRAISETILES
         </h1>

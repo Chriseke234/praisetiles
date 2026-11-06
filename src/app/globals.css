@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090a0f;
+  --background: #0b0816;
   --foreground: #f3f4f6;
   --gold-neon: #f59e0b;
+  --purple-neon: #a855f7;
+  --purple-deep: #1e1035;
   --emerald-neon: #10b981;
   --cyan-neon: #06b6d4;
   --rose-neon: #f43f5e;
@@ -20,6 +22,10 @@ body {
 }
 
 /* Custom dark arena glowing effects */
+.glow-purple {
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.45);
+}
+
 .glow-gold {
   box-shadow: 0 0 15px rgba(245, 158, 11, 0.45);
 }

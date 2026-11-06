@@ -24,7 +24,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   onQuickPlay,
   onBack,
 }) => {
-  const [rightsConfirmed, setRightsConfirmed] = useState(false);
+  // Rights checkbox removed — upload proceeds without a consent gate
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,11 +33,6 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = async (file: File) => {
-    if (!rightsConfirmed) {
-      setErrorMessage('Please confirm that you have the rights or permission to use this audio track before uploading.');
-      return;
-    }
-
     setErrorMessage(null);
     setIsProcessing(true);
     setProcessingStatus('Reading audio file...');
@@ -114,8 +109,11 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-center items-center p-4 sm:p-6 bg-[#090a0f] text-gray-100">
-      <div className="w-full max-w-xl bg-gray-950/90 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
+    <div className="relative min-h-screen w-full flex flex-col justify-center items-center p-4 sm:p-6 bg-[#0b0816] text-gray-100">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-gradient-to-b from-purple-600/15 via-amber-500/10 to-transparent blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-xl bg-gray-950/90 border border-purple-500/20 rounded-3xl p-6 sm:p-8 shadow-2xl relative backdrop-blur-sm">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
@@ -131,7 +129,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
         </div>
 
         <div className="text-center mb-6">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-400 via-amber-200 to-purple-300 bg-clip-text text-transparent tracking-tight">
             Upload Gospel Track
           </h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
@@ -147,22 +145,8 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
           </div>
         )}
 
-        {/* Rights & Preferences */}
+        {/* Upload Preferences */}
         <div className="mb-5 space-y-2">
-          {/* Rights Checkbox (GDD Requirement) */}
-          <div className="p-3.5 rounded-xl bg-gray-900/80 border border-gray-800 flex items-start gap-3">
-            <input
-              type="checkbox"
-              id="rights-check"
-              checked={rightsConfirmed}
-              onChange={(e) => setRightsConfirmed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-900 cursor-pointer"
-            />
-            <label htmlFor="rights-check" className="text-xs text-gray-300 cursor-pointer select-none">
-              I confirm that I have the rights or permission needed to use and play this audio recording.
-            </label>
-          </div>
-
           {/* Quick Play (Skip Preview) Toggle per GDD §4 */}
           <div className="p-3 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
             <label htmlFor="skip-preview" className="text-xs text-gray-400 cursor-pointer select-none flex items-center gap-2">
@@ -186,17 +170,11 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
           }}
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
-          onClick={() => {
-            if (!rightsConfirmed) {
-              setErrorMessage('Please confirm rights or permission by checking the box above.');
-              return;
-            }
-            fileInputRef.current?.click();
-          }}
+          onClick={() => fileInputRef.current?.click()}
           className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 ${
             dragActive
-              ? 'border-amber-400 bg-amber-500/10'
-              : 'border-gray-800 hover:border-gray-700 bg-gray-900/40 hover:bg-gray-900/60'
+              ? 'border-purple-400 bg-purple-500/15 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+              : 'border-gray-800 hover:border-purple-500/50 bg-gray-900/40 hover:bg-purple-950/15'
           }`}
         >
           <input
@@ -211,7 +189,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
             }}
           />
 
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-amber-500/30 flex items-center justify-center mb-3 shadow-md">
             <Upload className="w-6 h-6 text-amber-400" />
           </div>
 
@@ -222,7 +200,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
             MP3, WAV, or MP4 audio &bull; Max 15 MB &bull; 30s to 5 minutes
           </p>
 
-          <span className="mt-4 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition">
+          <span className="mt-4 px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-900/50 hover:text-white border border-gray-700/60 text-xs font-semibold text-gray-200 transition">
             Browse Files
           </span>
         </div>
@@ -239,18 +217,18 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
         <button
           onClick={handleDemoTrack}
           disabled={isProcessing}
-          className="w-full p-4 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-gray-900 border border-cyan-500/40 hover:border-cyan-400 text-left flex items-center justify-between group transition glow-cyan hover:scale-[1.01] active:scale-[0.99]"
+          className="w-full p-4 rounded-2xl bg-gradient-to-r from-purple-950/70 via-gray-900 to-amber-950/40 border border-purple-500/30 hover:border-amber-400/70 text-left flex items-center justify-between group transition glow-purple hover:scale-[1.01] active:scale-[0.99]"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 group-hover:text-amber-300 transition">
               <Music className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition">
+                <span className="text-sm font-bold text-white group-hover:text-amber-300 transition">
                   Play Royalty-Free Demo Praise Track
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase">
                   Instant
                 </span>
               </div>
@@ -259,7 +237,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
               </p>
             </div>
           </div>
-          <span className="text-cyan-400 text-sm font-bold group-hover:translate-x-1 transition">
+          <span className="text-amber-400 text-sm font-bold group-hover:translate-x-1 transition">
             &rarr;
           </span>
         </button>

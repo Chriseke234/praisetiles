@@ -222,23 +222,23 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
   }, [gameStarted]);
 
   // -----------------------------------------------------------------------
-  // Direct Pointer Interaction (Touch & Mouse)
+  // Direct Tile Interaction (Piano Tiles style)
   // -----------------------------------------------------------------------
-  const handlePointerDown = useCallback((lane: number) => {
+  const handleTilePointerDown = useCallback((noteId: string, lane: number) => {
     if (engineRef.current) {
-      engineRef.current.handlePointerDown(lane);
+      engineRef.current.handleDirectTileDown(noteId, lane);
     }
   }, []);
 
-  const handlePointerUp = useCallback((lane: number) => {
+  const handleTilePointerUp = useCallback((noteId: string, lane: number) => {
     if (engineRef.current) {
-      engineRef.current.handlePointerUp(lane);
+      engineRef.current.handleDirectTileUp(noteId, lane);
     }
   }, []);
 
-  const handlePointerMoveAcross = useCallback((lane: number) => {
+  const handlePointerLeaveArea = useCallback(() => {
     if (engineRef.current) {
-      engineRef.current.handlePointerMoveAcross(lane);
+      engineRef.current.handlePointerCancel();
     }
   }, []);
 
@@ -250,9 +250,9 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     approachTime: engineRef.current?.getDynamicApproachTime(),
     activeLanes,
     reducedMotion,
-    onLanePointerDown: handlePointerDown,
-    onLanePointerUp: handlePointerUp,
-    onLanePointerEnter: handlePointerMoveAcross,
+    onTilePointerDown: handleTilePointerDown,
+    onTilePointerUp: handleTilePointerUp,
+    onPointerLeaveArea: handlePointerLeaveArea,
   };
 
   return (

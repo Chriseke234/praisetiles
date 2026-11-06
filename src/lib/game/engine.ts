@@ -226,7 +226,128 @@ export class GameEngine {
   }
 
   /**
-   * Pointer down or direct tap on a specific lane.
+   * Direct tile pointer-down: called when the player presses directly on a specific
+   * falling tile (by note ID). This is the PRIMARY input path for Piano-Tiles-style
+   * interaction.
+   *
+   * - Locates the note by ID (not by lane search), so only the touched tile can score.
+   * - Validates the timing window the same way as lane input.
+   * - Starts sustain tracking for long notes.
+   * - Does NOT trigger INCORRECT_TAP — an empty-lane area tap simply has no tile and
+   *   therefore never calls this method.
+   */
+  public handleDirectTileDown(noteId: string, lane: number): void {
+    if (!this.isRunning || this.isTerminated) return;
+
+    const now = this.currentAudioTime;
+
+    // Deduplicate rapid pointer events within 30 ms on the same note
+    const lastTap = this.lastTapTimeByLane[lane] ?? -1;
+    if (now - lastTap < 0.030) return;
+    this.lastTapTimeByLane[lane] = now;
+
+    // Mark the lane as held (needed by sustain tracking in update())
+    this.laneHeld[lane] = true;
+
+    // Find the exact note by ID
+    const note = this.notes.find((n) => n.id === noteId);
+    if (!note || note.hit) return; // Already hit or not found — ignore
+
+    const approachTime = this.getDynamicApproachTime();
+    const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
+    const adjustedTime = now - this.calibrationOffsetSec;
+    const timeUntilHit = note.time - adjustedTime;
+
+    // Ensure note is currently visible/active on screen
+    // It must have entered the screen (timeUntilHit <= approachTime)
+    // and not have passed below the bottom miss line (timeUntilHit >= -goodWindow)
+    if (timeUntilHit > approachTime || timeUntilHit < -goodWindow) {
+      return;
+    }
+
+    // Determine judgement grade:
+    // If it's near the bottom target zone, use high-precision timing grade.
+    // If it's tapped higher up on screen (e.g. halfway down the screen),
+    // it successfully scores!
+    const absDiff = Math.abs(timeUntilHit);
+    let grade: HitGrade;
+    if (absDiff <= GAMEPLAY_CONFIG.TIMING_WINDOWS.PERFECT_SEC) {
+      grade = 'PERFECT';
+    } else if (absDiff <= GAMEPLAY_CONFIG.TIMING_WINDOWS.GREAT_SEC) {
+      grade = 'GREAT';
+    } else if (absDiff <= GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC) {
+      grade = 'GOOD';
+    } else {
+      // Tapped while falling earlier on the screen (e.g. halfway down screen)
+      // Award GREAT if in the lower half of approach, GOOD if higher up
+      grade = timeUntilHit <= approachTime * 0.6 ? 'GREAT' : 'GOOD';
+    }
+
+    note.hit = true;
+    note.grade = grade;
+    this.notesHitCount++;
+    this.scoreState = applyHitToScoreState(this.scoreState, grade);
+    this.callbacks.onScoreUpdate(this.scoreState);
+    this.callbacks.onNoteJudged(note.id, grade, lane);
+
+    if (this.callbacks.onLaneTapEffect) {
+      this.callbacks.onLaneTapEffect(lane);
+    }
+
+    // Handle Long (Sustain) Tile initialization
+    if (note.type === 'long' && note.duration) {
+      note.sustainState = 'holding';
+      note.sustainProgress = 0;
+      this.activeSustainNote = note;
+      this.sustainLastTickTime = now;
+      this.callbacks.onSustainProgress?.(note.id, 0, 'holding');
+    }
+
+    // Check if this was the last note and audio is near end
+    const remainingUnhit = this.notes.some((n) => !n.hit);
+    if (!remainingUnhit && now >= this.map.duration - 0.5 && !this.activeSustainNote) {
+      this.handleCompletion();
+    }
+  }
+
+  /**
+   * Direct tile pointer-up: called when the player releases a tile.
+   * Ends sustain tracking for long notes by note ID.
+   */
+  public handleDirectTileUp(noteId: string, lane: number): void {
+    this.laneHeld[lane] = false;
+
+    // Only handle if this note is the active sustain
+    if (
+      this.activeSustainNote &&
+      this.activeSustainNote.id === noteId &&
+      this.activeSustainNote.sustainState === 'holding'
+    ) {
+      const note = this.activeSustainNote;
+      const duration = note.duration ?? 0.8;
+      const endTime = note.time + duration;
+
+      if (this.currentAudioTime >= endTime - GAMEPLAY_CONFIG.SUSTAIN.EARLY_RELEASE_TOLERANCE_SEC) {
+        // Released close enough to the end — count as full completion
+        note.sustainState = 'completed';
+        note.sustainProgress = 1.0;
+        this.scoreState = applySustainCompletionToScoreState(this.scoreState);
+        this.callbacks.onScoreUpdate(this.scoreState);
+        this.callbacks.onSustainProgress?.(note.id, 1.0, 'completed');
+      } else {
+        // Released early — apply penalty
+        note.sustainState = 'released_early';
+        this.scoreState = applyEarlyReleaseToScoreState(this.scoreState);
+        this.callbacks.onScoreUpdate(this.scoreState);
+        this.callbacks.onSustainProgress?.(note.id, note.sustainProgress ?? 0, 'released_early');
+      }
+      this.activeSustainNote = null;
+    }
+  }
+
+  /**
+   * Pointer down on a lane: sets laneHeld and evaluates lane hit (supports fallback & unit tests).
+   * Note: The primary in-game UI input path for Piano-Tiles gameplay is handleDirectTileDown.
    */
   public handlePointerDown(lane: number): void {
     if (!this.isRunning || this.isTerminated) return;
@@ -235,7 +356,19 @@ export class GameEngine {
   }
 
   /**
-   * Pointer up or contact release on a specific lane.
+   * Continuous pointer move across lanes: sets laneHeld and evaluates tap on newly entered lane.
+   */
+  public handlePointerMoveAcross(lane: number): void {
+    if (!this.isRunning || this.isTerminated) return;
+    if (!this.laneHeld[lane]) {
+      this.laneHeld[lane] = true;
+      this.handleLaneInput(lane, true);
+    }
+  }
+
+  /**
+   * Pointer up on a lane (used for cancellation / sustain end when tile-based
+   * release is not caught — e.g. pointer leaves the viewport).
    */
   public handlePointerUp(lane: number): void {
     this.laneHeld[lane] = false;
@@ -263,18 +396,6 @@ export class GameEngine {
   }
 
   /**
-   * Continuous pointer move across lanes (supports finger sweep and drag across screen).
-   */
-  public handlePointerMoveAcross(lane: number): void {
-    if (!this.isRunning || this.isTerminated) return;
-    if (!this.laneHeld[lane]) {
-      this.laneHeld[lane] = true;
-      // Trigger tap evaluation on newly entered lane
-      this.handleLaneInput(lane, true);
-    }
-  }
-
-  /**
    * Releases all held lanes (e.g. on pointercancel or mouse leaving playfield).
    */
   public handlePointerCancel(): void {
@@ -286,11 +407,9 @@ export class GameEngine {
   }
 
   /**
-   * Handles user tap / click on a specific lane (0, 1, 2, or 3).
-   * Strict failure rules:
-   * - If an unhit note is in the valid timing window (±150ms), award grade (Perfect/Great/Good).
-   * - If note is 'long', transition to 'holding' sustain state.
-   * - If NO unhit note is in the valid timing window, INCORRECT TAP ends run immediately.
+   * Legacy lane-based input (kept for internal use and fallback only).
+   * The primary gameplay path is now handleDirectTileDown/Up.
+   * This method is no longer called from tile views — only internally.
    */
   public handleLaneInput(lane: number, isDirectContact: boolean = true): void {
     if (!this.isRunning || this.isTerminated) return;

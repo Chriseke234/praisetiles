@@ -84,7 +84,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const pendingInvite = invitations[0];
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between items-center p-4 sm:p-6 md:p-8 bg-[#090a0f] text-gray-100 overflow-x-hidden">
+    <div className="relative min-h-screen w-full flex flex-col justify-between items-center p-4 sm:p-6 md:p-8 bg-[#0b0816] text-gray-100 overflow-x-hidden">
       {/* Real Unsplash Worship Atmosphere Background */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-10 mix-blend-screen pointer-events-none"
@@ -94,7 +94,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       />
 
       {/* Atmospheric ambient lighting gradient overlays */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-amber-500/10 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[650px] h-[380px] bg-gradient-to-b from-purple-600/15 via-amber-500/10 to-transparent blur-3xl pointer-events-none" />
 
       {/* Top Navbar */}
       <header className="relative z-20 w-full max-w-5xl lg:max-w-6xl flex items-center justify-between border-b border-gray-800/80 pb-4 gap-2 sm:gap-4">
@@ -595,9 +595,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </button>
                 <button
                   onClick={() => setShowMultiplayerModal(true)}
-                  className="px-5 py-3 rounded-2xl bg-gray-900/90 border border-gray-800 hover:border-cyan-500/50 text-gray-200 hover:text-cyan-400 font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
+                  className="px-5 py-3 rounded-2xl bg-gray-900/90 border border-purple-500/30 hover:border-purple-400 text-gray-200 hover:text-purple-300 font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 shadow-md shadow-purple-500/10"
                 >
-                  <Users className="w-4 h-4 text-cyan-400" />
+                  <Users className="w-4 h-4 text-purple-400" />
                   <span>Multiplayer Arena</span>
                 </button>
               </div>
@@ -638,21 +638,21 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               {/* Card 2: Multiplayer & Quick Play */}
               <button
                 onClick={() => setShowMultiplayerModal(true)}
-                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-gray-900/60 to-gray-950 border border-cyan-500/30 hover:border-cyan-400/80 transition-all duration-200 hover:shadow-xl hover:shadow-cyan-500/10 hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
+                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-purple-950/20 to-gray-950 border border-purple-500/30 hover:border-purple-400/80 transition-all duration-200 hover:shadow-xl hover:shadow-purple-500/15 hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-black shadow-md shadow-cyan-500/30 shrink-0 group-hover:scale-105 transition">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white shadow-md shadow-purple-500/30 shrink-0 group-hover:scale-105 transition">
                     <Users className="w-6 h-6 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase tracking-wide">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase tracking-wide">
                     Live Arena
                   </span>
                 </div>
 
                 <div className="mt-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-cyan-300 transition flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-white group-hover:text-purple-300 transition flex items-center gap-2">
                     Multiplayer Battles
-                    <ChevronRight className="w-4 h-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                    <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
                     Synchronized rhythm matches for up to 4 players. Join public lobbies, invite friends, or hop into Quick Play.
@@ -660,7 +660,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
-                  <span className="text-cyan-400 font-semibold">Realtime Clock Sync</span>
+                  <span className="text-purple-300 font-semibold">Realtime Clock Sync</span>
                   <span className="text-gray-500">Shared Authoritative Map</span>
                 </div>
               </button>

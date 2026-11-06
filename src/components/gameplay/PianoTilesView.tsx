@@ -9,9 +9,12 @@ interface PianoTilesViewProps {
   currentTime: number;
   approachTime?: number;
   activeLanes: boolean[];
-  onLanePointerDown: (lane: number) => void;
-  onLanePointerUp: (lane: number) => void;
-  onLanePointerEnter: (lane: number) => void;
+  /** Called when the player taps/clicks directly on a falling tile */
+  onTilePointerDown: (noteId: string, lane: number) => void;
+  /** Called when the player releases a falling tile */
+  onTilePointerUp: (noteId: string, lane: number) => void;
+  /** Called when pointer leaves the game area (cancel all sustains) */
+  onPointerLeaveArea: () => void;
   reducedMotion: boolean;
 }
 
@@ -20,9 +23,9 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
   currentTime,
   approachTime = GAMEPLAY_CONFIG.APPROACH_TIME_SECONDS,
   activeLanes,
-  onLanePointerDown,
-  onLanePointerUp,
-  onLanePointerEnter,
+  onTilePointerDown,
+  onTilePointerUp,
+  onPointerLeaveArea,
   reducedMotion,
 }) => {
   const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
@@ -46,7 +49,8 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
     <div
       className="relative w-full h-full max-w-lg mx-auto flex flex-col justify-between overflow-hidden bg-[#07080c] select-none border-x border-gray-800/80 touch-none"
       onPointerLeave={() => {
-        [0, 1, 2, 3].forEach((l) => onLanePointerUp(l));
+        // Cancel all active sustains when the pointer leaves the game area
+        onPointerLeaveArea();
       }}
     >
       {/* 4 Lanes Container */}
@@ -54,31 +58,16 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
         {/* Hit line receptor guide at 82% from top */}
         <div className="absolute top-[82%] left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-amber-400 to-cyan-500 z-10 shadow-[0_0_15px_rgba(6,182,212,0.8)]" />
 
-        {/* 4 Vertical Lanes with Direct Pointer Handlers */}
+        {/* 4 Vertical Lanes — Visual only. All scoring happens via direct tile taps. */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
             <div
               key={lane}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-                onLanePointerDown(lane);
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                onLanePointerUp(lane);
-              }}
-              onPointerEnter={(e) => {
-                // Support continuous glissando / drag across lanes
-                if (e.buttons > 0) {
-                  onLanePointerEnter(lane);
-                }
-              }}
-              className={`relative h-full flex flex-col justify-end cursor-pointer transition-colors duration-75 ${
+              className={`relative h-full flex flex-col justify-end pointer-events-none transition-colors duration-75 ${
                 isActive
                   ? 'bg-cyan-500/20'
-                  : 'hover:bg-white/[0.02] active:bg-cyan-500/15'
+                  : ''
               }`}
             >
               {/* Vertical center laser guide line */}
@@ -172,8 +161,20 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
                   top: `${tailTopPercent}%`,
                   height: `${currentTailHeight}%`,
                   willChange: 'top, height',
+                  touchAction: 'none',
                 }}
-                className="px-1.5 pointer-events-none z-15 flex flex-col justify-end"
+                /* Long tile: press anywhere on the tile (head or tail) to start hold */
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  onTilePointerDown(note.id, note.lane);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  onTilePointerUp(note.id, note.lane);
+                }}
+                className="px-1.5 z-15 flex flex-col justify-end cursor-pointer"
               >
                 {/* Luminous Sustain Tail Body */}
                 <div
@@ -223,8 +224,20 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
                 top: `${topPercent}%`,
                 transform: 'translateY(-100%)',
                 willChange: 'top',
+                touchAction: 'none',
               }}
-              className="px-1.5 pointer-events-none z-15"
+              /* Short tile: tap directly on the tile to score */
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                onTilePointerDown(note.id, note.lane);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                onTilePointerUp(note.id, note.lane);
+              }}
+              className="px-1.5 z-15 cursor-pointer"
             >
               <div
                 className={`w-full h-14 sm:h-16 rounded-xl border-2 bg-gradient-to-b ${baseColor} flex items-center justify-center relative overflow-hidden shadow-lg transition-transform ${

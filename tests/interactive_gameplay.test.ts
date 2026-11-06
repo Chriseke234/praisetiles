@@ -79,6 +79,40 @@ describe('Interactive Rhythm Gameplay Upgrade', () => {
       expect(noteJudgedMock).toHaveBeenCalledWith('s-0', 'PERFECT', 0);
       expect(engine.getScoreState().combo).toBe(1);
     });
+
+    it('DIRECT TILE TAP: player can tap falling tile halfway down screen and immediately score', () => {
+      const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
+      const engine = new GameEngine(shortTileMap, 'piano', callbacks);
+      engine.start();
+
+      // Approach time is ~2.0s. At 1.0s, note 's-0' (at 2.0s) is halfway down screen
+      engine.update(1.0);
+      engine.handleDirectTileDown('s-0', 0);
+
+      expect(failedMock).not.toHaveBeenCalled();
+      expect(noteJudgedMock).toHaveBeenCalledWith('s-0', 'GREAT', 0);
+      expect(engine.getScoreState().score).toBeGreaterThan(0);
+      expect(engine.getScoreState().combo).toBe(1);
+    });
+
+    it('DIRECT TILE TAP: already hit note or invalid noteId does not double-score', () => {
+      const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
+      const engine = new GameEngine(shortTileMap, 'piano', callbacks);
+      engine.start();
+
+      engine.update(1.0);
+      engine.handleDirectTileDown('s-0', 0);
+      const initialScore = engine.getScoreState().score;
+
+      // Second tap on same note
+      engine.handleDirectTileDown('s-0', 0);
+      expect(engine.getScoreState().score).toBe(initialScore);
+
+      // Tap on non-existent note
+      engine.handleDirectTileDown('non-existent', 0);
+      expect(engine.getScoreState().score).toBe(initialScore);
+      expect(failedMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('Long Sustain Tiles Mechanics & Scoring', () => {

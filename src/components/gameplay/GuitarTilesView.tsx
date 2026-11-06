@@ -9,9 +9,12 @@ interface GuitarTilesViewProps {
   currentTime: number;
   approachTime?: number;
   activeLanes: boolean[];
-  onLanePointerDown: (lane: number) => void;
-  onLanePointerUp: (lane: number) => void;
-  onLanePointerEnter: (lane: number) => void;
+  /** Called when the player taps/clicks directly on a falling tile */
+  onTilePointerDown: (noteId: string, lane: number) => void;
+  /** Called when the player releases a falling tile */
+  onTilePointerUp: (noteId: string, lane: number) => void;
+  /** Called when pointer leaves the game area (cancel all sustains) */
+  onPointerLeaveArea: () => void;
   reducedMotion: boolean;
 }
 
@@ -20,9 +23,9 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
   currentTime,
   approachTime = GAMEPLAY_CONFIG.APPROACH_TIME_SECONDS,
   activeLanes,
-  onLanePointerDown,
-  onLanePointerUp,
-  onLanePointerEnter,
+  onTilePointerDown,
+  onTilePointerUp,
+  onPointerLeaveArea,
   reducedMotion,
 }) => {
   const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
@@ -43,7 +46,8 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
     <div
       className="relative w-full h-full max-w-lg mx-auto flex flex-col justify-between overflow-hidden bg-[#0a0705] select-none border-x-2 border-amber-900/60 shadow-2xl touch-none"
       onPointerLeave={() => {
-        [0, 1, 2, 3].forEach((l) => onLanePointerUp(l));
+        // Cancel all active sustains when the pointer leaves the game area
+        onPointerLeaveArea();
       }}
     >
       {/* 4 Fretboard Lanes Container */}
@@ -56,31 +60,16 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
         {/* Hit Bar at 82% */}
         <div className="absolute top-[82%] left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500 z-10 shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
 
-        {/* 4 Guitar Lanes with Direct Pointer Handlers */}
+        {/* 4 Guitar Lanes — Visual only. All scoring happens via direct tile taps. */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
             <div
               key={lane}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-                onLanePointerDown(lane);
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                onLanePointerUp(lane);
-              }}
-              onPointerEnter={(e) => {
-                // Support continuous glissando / fret glide across lanes
-                if (e.buttons > 0) {
-                  onLanePointerEnter(lane);
-                }
-              }}
-              className={`relative h-full flex flex-col justify-end cursor-pointer transition-colors duration-75 ${
+              className={`relative h-full flex flex-col justify-end pointer-events-none transition-colors duration-75 ${
                 isActive
                   ? 'bg-amber-500/25'
-                  : 'hover:bg-amber-950/20 active:bg-amber-500/20'
+                  : ''
               }`}
             >
               {/* Bronze/Steel Guitar String running down center */}
@@ -171,8 +160,20 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                   top: `${tailTopPercent}%`,
                   height: `${currentTailHeight}%`,
                   willChange: 'top, height',
+                  touchAction: 'none',
                 }}
-                className="px-2 pointer-events-none z-15 flex flex-col justify-end"
+                /* Long tile: press anywhere on the tile to start sustain hold */
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  onTilePointerDown(note.id, note.lane);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  onTilePointerUp(note.id, note.lane);
+                }}
+                className="px-2 z-15 flex flex-col justify-end cursor-pointer"
               >
                 {/* Luminous Sustain Fret Beam Body */}
                 <div
@@ -220,8 +221,20 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                 top: `${topPercent}%`,
                 transform: 'translateY(-100%)',
                 willChange: 'top',
+                touchAction: 'none',
               }}
-              className="px-2 pointer-events-none z-15"
+              /* Short tile: tap directly on the falling fret tile to score */
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                onTilePointerDown(note.id, note.lane);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                onTilePointerUp(note.id, note.lane);
+              }}
+              className="px-2 z-15 cursor-pointer"
             >
               <div
                 className={`w-full h-14 sm:h-16 rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative overflow-hidden shadow-lg transition-transform ${

@@ -126,25 +126,55 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const [roomRes, partRes, nomRes, voteRes, matchRes] = await Promise.all([
       supabase.from('rooms').select('*').eq('id', roomId).single(),
-      supabase.from('room_participants').select('*, profiles(display_name, avatar_url, player_progress(gem_rank))').eq('room_id', roomId),
+      supabase.from('room_participants').select('*').eq('room_id', roomId),
       supabase.from('nominations').select('*').eq('room_id', roomId).order('created_at', { ascending: true }),
       supabase.from('votes').select('*').eq('room_id', roomId),
       supabase.from('room_matches').select('*').eq('room_id', roomId).order('created_at', { ascending: false }).limit(1),
     ]);
 
-    if (roomRes.error || !roomRes.data) return;
+    if (roomRes.error || !roomRes.data) {
+      setError(roomRes.error?.message ?? 'Room not found or access denied');
+      return;
+    }
 
     const r = roomRes.data;
 
+    // Fetch participant profiles & rank independently (immune to cross-schema PostgREST join limits)
+    const rawParticipants = partRes.data ?? [];
+    const userIds = rawParticipants.map((p) => p.user_id);
+    const profileMap = new Map<string, { displayName: string; avatarUrl: string | null }>();
+    const progressMap = new Map<string, string>();
+
+    if (userIds.length > 0) {
+      const [profilesRes, progressRes] = await Promise.all([
+        supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds),
+        supabase.from('player_progress').select('user_id, gem_rank').in('user_id', userIds),
+      ]);
+
+      if (profilesRes.data) {
+        for (const prof of profilesRes.data) {
+          profileMap.set(prof.id, {
+            displayName: prof.display_name,
+            avatarUrl: prof.avatar_url,
+          });
+        }
+      }
+      if (progressRes.data) {
+        for (const prog of progressRes.data) {
+          progressMap.set(prog.user_id, prog.gem_rank);
+        }
+      }
+    }
+
     // Map participants
-    const participants: RoomParticipant[] = (partRes.data ?? []).map((p) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prof = (p as any).profiles;
+    const participants: RoomParticipant[] = rawParticipants.map((p) => {
+      const prof = profileMap.get(p.user_id);
       return {
         userId:      p.user_id,
-        displayName: prof?.display_name ?? 'Player',
-        avatarUrl:   prof?.avatar_url ?? null,
-        gemRank:     prof?.player_progress?.gem_rank ?? 'Quartz',
+        displayName: prof?.displayName ?? 'Player',
+        avatarUrl:   prof?.avatarUrl ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        gemRank:     (progressMap.get(p.user_id) as any) ?? 'Quartz',
         isHost:      p.is_host,
         isReady:     p.is_ready,
         isConnected: p.is_connected,

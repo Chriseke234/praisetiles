@@ -66,7 +66,36 @@ function RoomJoiner({ inviteCode }: RoomPageClientProps) {
     );
   }
 
-  if (!roomState) return null;
+  if (!roomState) {
+    return (
+      <div className="min-h-screen bg-[#090a0f] flex items-center justify-center p-4">
+        <div className="max-w-sm w-full bg-gray-900 border border-gray-800 rounded-2xl p-6 text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
+          <h2 className="text-lg font-bold text-white">Room Unavailable</h2>
+          <p className="text-sm text-gray-400">
+            Could not retrieve room details for <span className="font-mono text-amber-300">{inviteCode}</span>.
+          </p>
+          <div className="flex gap-2 justify-center pt-2">
+            <button
+              onClick={() => {
+                joinAttempted.current = false;
+                joinRoom(inviteCode);
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-sm transition"
+            >
+              Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ChatProvider roomId={roomState.id}>

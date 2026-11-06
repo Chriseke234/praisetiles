@@ -19,12 +19,12 @@ const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 /**
- * Generates a secure, URL-safe 6-character uppercase alphanumeric invite code.
+ * Generates a secure, URL-safe 8-character uppercase alphanumeric invite code.
  * Uses Node.js built-in `crypto.randomBytes` — no external dependencies or DB extensions required.
  */
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Unambiguous charset (no O/0, I/1)
-  const bytes = randomBytes(6);
+  const bytes = randomBytes(8);
   return Array.from(bytes)
     .map((b) => chars[b % chars.length])
     .join('');

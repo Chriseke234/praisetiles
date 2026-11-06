@@ -57,10 +57,10 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
         <div className="absolute top-[40%] left-0 right-0 h-[1px] bg-amber-800/30 pointer-events-none" />
         <div className="absolute top-[60%] left-0 right-0 h-[1px] bg-amber-800/40 pointer-events-none" />
 
-        {/* Hit Bar at 82% */}
-        <div className="absolute top-[82%] left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500 z-10 shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
+        {/* Hit Bar at 88% */}
+        <div className="absolute top-[88%] left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500/70 via-yellow-300 to-amber-500/70 z-10 shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
 
-        {/* 4 Guitar Lanes — Visual only. All scoring happens via direct tile taps. */}
+        {/* 4 Guitar Lanes — Visual strings. Direct tapping anywhere on falling fret tiles scores. */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
@@ -87,36 +87,6 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                   className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-amber-500/35 via-yellow-500/15 to-transparent pointer-events-none animate-pulse"
                 />
               )}
-
-              {/* Fret Button Hit Zone (No keyboard keys, pure guitar fret node) */}
-              <div
-                className={`relative z-20 w-full h-[18%] flex flex-col items-center justify-center border-t-2 transition-all ${
-                  isActive
-                    ? 'border-yellow-400 bg-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.6)] scale-[0.98]'
-                    : 'border-amber-600/40 bg-gradient-to-t from-black to-amber-950/60'
-                }`}
-              >
-                {/* Fret button receptor circle */}
-                <div
-                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center border-2 transition-all shadow-md ${
-                    isActive
-                      ? 'border-yellow-300 bg-yellow-400 text-black shadow-lg scale-110'
-                      : 'border-amber-500/60 bg-gray-950 text-amber-300'
-                  }`}
-                >
-                  {/* Glowing fret pearl inlay */}
-                  <div
-                    className={`w-3.5 h-3.5 rounded-full border ${
-                      isActive
-                        ? 'bg-white border-yellow-200 shadow-[0_0_8px_#fff]'
-                        : 'bg-amber-500/40 border-amber-400/60'
-                    }`}
-                  />
-                </div>
-                <span className="text-[8px] uppercase tracking-wider text-amber-400/90 font-black mt-1">
-                  String {lane + 1}
-                </span>
-              </div>
             </div>
           );
         })}
@@ -127,7 +97,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
           const isLong = note.type === 'long' && (note.duration ?? 0) > 0;
           const duration = note.duration ?? 0;
           const lanePercent = note.lane * 25;
-          const hitLinePercent = 82;
+          const hitLinePercent = 88;
 
           if (isLong) {
             // Sustained Long Guitar Tile (Extended Fret Beam)

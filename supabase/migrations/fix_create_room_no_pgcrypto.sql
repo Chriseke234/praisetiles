@@ -42,9 +42,9 @@ BEGIN
   VALUES (v_host_id, p_instrument, v_invite, 'waiting')
   RETURNING id INTO v_room_id;
 
-  -- Add host as first participant
-  INSERT INTO room_participants (room_id, user_id, role)
-  VALUES (v_room_id, v_host_id, 'host')
+  -- Add host as first participant (is_host column in room_participants)
+  INSERT INTO public.room_participants (room_id, user_id, is_host)
+  VALUES (v_room_id, v_host_id, TRUE)
   ON CONFLICT (room_id, user_id) DO NOTHING;
 
   RETURN json_build_object(

@@ -55,10 +55,10 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
     >
       {/* 4 Lanes Container */}
       <div className="relative w-full flex-1 grid grid-cols-4 divide-x divide-gray-800/60 overflow-hidden">
-        {/* Hit line receptor guide at 82% from top */}
-        <div className="absolute top-[82%] left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-amber-400 to-cyan-500 z-10 shadow-[0_0_15px_rgba(6,182,212,0.8)]" />
+        {/* Hit line receptor guide at 88% from top */}
+        <div className="absolute top-[88%] left-0 right-0 h-1 bg-gradient-to-r from-cyan-500/70 via-amber-400 to-cyan-500/70 z-10 shadow-[0_0_15px_rgba(6,182,212,0.8)]" />
 
-        {/* 4 Vertical Lanes — Visual only. All scoring happens via direct tile taps. */}
+        {/* 4 Vertical Lanes — Visual tracks. Direct tapping anywhere on falling tiles scores. */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
@@ -79,33 +79,6 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
                   className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-cyan-500/35 via-cyan-500/10 to-transparent pointer-events-none animate-pulse"
                 />
               )}
-
-              {/* Bottom Interactive Hit Zone (No keyboard keys, pure neon receptor) */}
-              <div
-                className={`relative z-20 w-full h-[18%] flex flex-col items-center justify-center border-t-2 transition-all ${
-                  isActive
-                    ? 'border-cyan-400 bg-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.6)] scale-[0.98]'
-                    : 'border-cyan-500/30 bg-gray-900/80 hover:bg-gray-850'
-                }`}
-              >
-                {/* Luminous receptor node */}
-                <div
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                    isActive
-                      ? 'border-cyan-300 bg-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.9)] scale-110'
-                      : 'border-cyan-500/40 bg-gray-950/60'
-                  }`}
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      isActive ? 'bg-white shadow-[0_0_6px_#fff]' : 'bg-cyan-400/50'
-                    }`}
-                  />
-                </div>
-                <span className="text-[9px] uppercase tracking-widest text-cyan-300/80 font-bold mt-1">
-                  Lane {lane + 1}
-                </span>
-              </div>
             </div>
           );
         })}
@@ -124,8 +97,8 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
 
           const lanePercent = note.lane * 25;
 
-          // Calculate travel progress to hit line (at 82% from top)
-          const hitLinePercent = 82;
+          // Calculate travel progress to hit threshold (at 88% from top)
+          const hitLinePercent = 88;
 
           if (isLong) {
             // Sustained Long Tile

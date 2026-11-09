@@ -144,9 +144,9 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
                     onTilePointerDown(note.id, note.lane);
                   }
                 }}
-                className="px-1 z-25 cursor-pointer animate-pulse"
+                className="px-1 z-20 cursor-pointer animate-pulse h-24 sm:h-28"
               >
-                <div className="w-full h-24 sm:h-28 rounded-xl bg-gradient-to-b from-[#241344] via-[#150a2b] to-[#0a0515] border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.85)] flex flex-col items-center justify-center gap-1 transition-transform hover:scale-105 active:scale-95">
+                <div className="w-full h-full rounded-xl bg-gradient-to-b from-[#241344] via-[#150a2b] to-[#0a0515] border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.85)] flex flex-col items-center justify-center gap-1 pointer-events-none">
                   <span className="text-base sm:text-lg font-black tracking-widest text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.9)]">
                     START
                   </span>
@@ -185,31 +185,44 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
                   width: '25%',
                   top: `${tailTopPercent}%`,
                   height: `${currentTailHeight}%`,
+                  minHeight: '48px',
                   willChange: 'top, height',
                   touchAction: 'none',
                 }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  try {
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  } catch {}
                   onTilePointerDown(note.id, note.lane);
                 }}
                 onPointerUp={(e) => {
                   e.stopPropagation();
+                  try {
+                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                  } catch {}
                   onTilePointerUp(note.id, note.lane);
                 }}
-                className="px-1 z-15 flex flex-col justify-end cursor-pointer"
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  try {
+                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                  } catch {}
+                  onTilePointerUp(note.id, note.lane);
+                }}
+                className="px-1 z-20 flex flex-col justify-end cursor-pointer"
               >
                 {/* Luminous Sustain Tail Body with Central Dotted Guide */}
                 <div
-                  className={`w-full h-full rounded-t-xl border-x border-t relative overflow-hidden transition-all ${
+                  className={`w-full h-full rounded-t-xl border-x border-t relative overflow-hidden transition-all pointer-events-none ${
                     isHolding
                       ? 'bg-gradient-to-t from-purple-600/90 via-purple-800/70 to-purple-950/40 border-purple-300 shadow-[0_0_25px_rgba(192,132,252,0.9)]'
                       : 'bg-gradient-to-t from-purple-700/80 via-purple-900/60 to-purple-950/30 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.5)]'
                   }`}
                 >
                   {/* Central Luminous Dot Guideline */}
-                  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-purple-300/40" />
+                  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-purple-300/40 pointer-events-none" />
 
                   {/* Periodic Luminous Guide Rings along Tail */}
                   <div className="absolute inset-0 flex flex-col justify-around items-center pointer-events-none opacity-40">
@@ -221,11 +234,11 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
 
                 {/* Rounded Contact Head Cap with Concentric Touch Circles */}
                 <div
-                  className={`w-full h-12 sm:h-14 rounded-b-2xl border-2 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 border-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.9)] flex items-center justify-center relative overflow-hidden`}
+                  className="w-full h-12 sm:h-14 rounded-b-2xl border-2 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 border-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.9)] flex items-center justify-center relative overflow-hidden pointer-events-none"
                 >
                   {/* Target Ripple / Bullseye Rings */}
-                  <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-[0_0_8px_#ffffff]">
-                    <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
+                  <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-[0_0_8px_#ffffff] pointer-events-none">
+                    <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#ffffff] pointer-events-none" />
                   </div>
 
                   {isHolding && (
@@ -236,7 +249,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
             );
           }
 
-          // Short Standard Tile (Deep Obsidian Purple with Subtle Shine)
+          // Short Standard Tile (Entire container is reliable touch target)
           const progress = 1 - timeUntilHit / approachTime;
           const topPercent = progress * hitLinePercent;
 
@@ -255,24 +268,18 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                // Do NOT call setPointerCapture on short tiles: instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                onTilePointerUp(note.id, note.lane);
-              }}
-              className="px-1 z-15 cursor-pointer"
+              className="px-1 z-20 cursor-pointer h-16 sm:h-20"
             >
               <div
-                className={`w-full h-16 sm:h-20 rounded-xl border border-purple-400/40 bg-gradient-to-b from-[#221344] via-[#140b29] to-[#090414] shadow-[0_4px_15px_rgba(0,0,0,0.8)] flex items-center justify-center relative overflow-hidden transition-transform ${
-                  !reducedMotion ? 'hover:scale-[1.03] active:scale-95' : ''
-                }`}
+                className="w-full h-full rounded-xl border border-purple-400/40 bg-gradient-to-b from-[#221344] via-[#140b29] to-[#090414] shadow-[0_4px_15px_rgba(0,0,0,0.8)] flex items-center justify-center relative overflow-hidden pointer-events-none"
               >
                 {/* Surface Sheen */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
                 {/* Central Soft Ambient Glow */}
-                <div className="w-1/3 h-1 bg-purple-300/60 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+                <div className="w-1/3 h-1 bg-purple-300/60 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.8)] pointer-events-none" />
               </div>
             </div>
           );

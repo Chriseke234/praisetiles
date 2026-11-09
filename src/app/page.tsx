@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { InstrumentType, RhythmMap, RunResult } from '@/types/game';
 import { GameAudioPlayer } from '@/lib/audio/player';
-import { AuthProvider, useAuth } from '@/lib/auth/AuthContext';
-import { SocialProvider } from '@/lib/social/SocialContext';
-import { TournamentProvider } from '@/lib/tournament/TournamentContext';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { MainMenu } from '@/components/menu/MainMenu';
 import { AudioUploadModal } from '@/components/setup/AudioUploadModal';
 import { RhythmMapPreview } from '@/components/setup/RhythmMapPreview';
@@ -14,7 +12,6 @@ import { ResultScreen } from '@/components/gameplay/ResultScreen';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ProfileModal } from '@/components/profile/ProfileModal';
 import { TransferGuestModal } from '@/components/auth/TransferGuestModal';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 type AppView = 'MENU' | 'UPLOAD' | 'PREVIEW' | 'PLAYING' | 'RESULT';
 
@@ -203,15 +200,5 @@ function PraiseTilesGame() {
 }
 
 export default function PraiseTilesApp() {
-  return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <SocialProvider>
-          <TournamentProvider>
-            <PraiseTilesGame />
-          </TournamentProvider>
-        </SocialProvider>
-      </AuthProvider>
-    </ErrorBoundary>
-  );
+  return <PraiseTilesGame />;
 }

@@ -113,6 +113,88 @@ describe('Interactive Rhythm Gameplay Upgrade', () => {
       expect(engine.getScoreState().score).toBe(initialScore);
       expect(failedMock).not.toHaveBeenCalled();
     });
+
+    it('DIRECT TILE TAP across all 4 lanes: registers hits reliably on lanes 0, 1, 2, and 3', () => {
+      const fourLaneMap: RhythmMap = {
+        version: '2.0.0',
+        audioFingerprint: 'four-lane-test',
+        songTitle: 'Four Lane Hymn',
+        duration: 30.0,
+        totalNotes: 4,
+        notes: [
+          { id: 'lane-0', lane: 0, time: 2.0, hit: false, type: 'short' },
+          { id: 'lane-1', lane: 1, time: 2.5, hit: false, type: 'short' },
+          { id: 'lane-2', lane: 2, time: 3.0, hit: false, type: 'short' },
+          { id: 'lane-3', lane: 3, time: 3.5, hit: false, type: 'short' },
+        ],
+        stages: { star1End: 10, star2End: 20, star3End: 30 },
+      };
+
+      const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
+      const engine = new GameEngine(fourLaneMap, 'piano', callbacks);
+      engine.start();
+
+      // Lane 0 tap (well within ±50ms PERFECT window)
+      engine.update(1.98);
+      engine.handleDirectTileDown('lane-0', 0);
+      expect(noteJudgedMock).toHaveBeenCalledWith('lane-0', 'PERFECT', 0);
+
+      // Lane 1 tap
+      engine.update(2.48);
+      engine.handleDirectTileDown('lane-1', 1);
+      expect(noteJudgedMock).toHaveBeenCalledWith('lane-1', 'PERFECT', 1);
+
+      // Lane 2 tap (early edge tap)
+      engine.update(2.8);
+      engine.handleDirectTileDown('lane-2', 2);
+      expect(noteJudgedMock).toHaveBeenCalledWith('lane-2', 'GREAT', 2);
+
+      // Lane 3 tap (late edge tap at +120ms -> GOOD)
+      engine.update(3.62);
+      engine.handleDirectTileDown('lane-3', 3);
+      expect(noteJudgedMock).toHaveBeenCalledWith('lane-3', 'GOOD', 3);
+
+      expect(failedMock).not.toHaveBeenCalled();
+      expect(engine.getScoreState().combo).toBe(4);
+    });
+
+    it('RAPID CONSECUTIVE TAPS: handles rapid taps without duplicate scoring or state desync', () => {
+      const rapidMap: RhythmMap = {
+        version: '2.0.0',
+        audioFingerprint: 'rapid-test',
+        songTitle: 'Rapid Taps Test',
+        duration: 30.0,
+        totalNotes: 3,
+        notes: [
+          { id: 'r-0', lane: 0, time: 1.0, hit: false, type: 'short' },
+          { id: 'r-1', lane: 1, time: 1.1, hit: false, type: 'short' },
+          { id: 'r-2', lane: 2, time: 1.2, hit: false, type: 'short' },
+        ],
+        stages: { star1End: 10, star2End: 20, star3End: 30 },
+      };
+
+      const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
+      const engine = new GameEngine(rapidMap, 'piano', callbacks);
+      engine.start();
+
+      engine.update(1.0);
+      // Rapid tap 1
+      engine.handleDirectTileDown('r-0', 0);
+      // Repeated tap on same tile in same frame should be ignored
+      engine.handleDirectTileDown('r-0', 0);
+
+      engine.update(1.1);
+      // Rapid tap 2
+      engine.handleDirectTileDown('r-1', 1);
+
+      engine.update(1.2);
+      // Rapid tap 3
+      engine.handleDirectTileDown('r-2', 2);
+
+      expect(failedMock).not.toHaveBeenCalled();
+      expect(engine.getScoreState().combo).toBe(3);
+      expect(noteJudgedMock).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe('Long Sustain Tiles Mechanics & Scoring', () => {

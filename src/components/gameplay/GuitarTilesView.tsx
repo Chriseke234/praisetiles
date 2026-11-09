@@ -136,18 +136,30 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  try {
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  } catch {}
                   onTilePointerDown(note.id, note.lane);
                 }}
                 onPointerUp={(e) => {
                   e.stopPropagation();
+                  try {
+                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                  } catch {}
                   onTilePointerUp(note.id, note.lane);
                 }}
-                className="px-2 z-15 flex flex-col justify-end cursor-pointer"
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  try {
+                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                  } catch {}
+                  onTilePointerUp(note.id, note.lane);
+                }}
+                className="px-2 z-20 flex flex-col justify-end cursor-pointer"
               >
                 {/* Luminous Sustain Fret Beam Body */}
                 <div
-                  className={`w-full h-full rounded-t-xl border-x-2 border-t-2 relative overflow-hidden transition-all ${
+                  className={`w-full h-full rounded-t-xl border-x-2 border-t-2 relative overflow-hidden transition-all pointer-events-none ${
                     isHolding
                       ? 'bg-gradient-to-t from-yellow-500/90 via-amber-400/60 to-yellow-600/30 border-yellow-200 shadow-[0_0_20px_rgba(250,204,21,1)] animate-pulse'
                       : 'bg-gradient-to-t from-amber-600/80 via-amber-500/40 to-yellow-700/20 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.6)]'
@@ -157,7 +169,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                   <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_6px,rgba(254,240,138,0.2)_6px,rgba(254,240,138,0.2)_10px)] pointer-events-none" />
 
                   {/* Sustain Hold Label */}
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="text-[10px] sm:text-xs font-black tracking-widest uppercase text-white drop-shadow-[0_0_6px_rgba(0,0,0,0.8)] rotate-[-90deg]">
                       {isHolding ? 'SUSTAIN' : 'HOLD'}
                     </span>
@@ -165,19 +177,19 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                 </div>
 
                 {/* Head Guitar Fret Tile */}
-                <div className="w-full h-12 sm:h-14 rounded-b-xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative shadow-lg">
-                  <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)]">
-                    <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" />
+                <div className="w-full h-12 sm:h-14 rounded-b-xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative shadow-lg pointer-events-none">
+                  <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
+                    <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
                   </div>
                   {isHolding && (
-                    <div className="absolute inset-0 bg-yellow-200/50 animate-ping rounded-b-xl" />
+                    <div className="absolute inset-0 bg-yellow-200/50 animate-ping rounded-b-xl pointer-events-none" />
                   )}
                 </div>
               </div>
             );
           }
 
-          // Short Normal Guitar Fret Tile
+          // Short Normal Guitar Fret Tile (Entire container is reliable hit target)
           const progress = 1 - timeUntilHit / approachTime;
           const topPercent = progress * hitLinePercent;
 
@@ -193,27 +205,20 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                 willChange: 'top',
                 touchAction: 'none',
               }}
-              /* Short tile: tap directly on the falling fret tile to score */
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                // Do NOT call setPointerCapture on short tiles: instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                onTilePointerUp(note.id, note.lane);
-              }}
-              className="px-2 z-15 cursor-pointer"
+              className="px-2 z-20 cursor-pointer h-14 sm:h-16"
             >
               <div
-                className={`w-full h-14 sm:h-16 rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative overflow-hidden shadow-lg transition-transform ${
-                  !reducedMotion ? 'hover:scale-105' : ''
-                }`}
+                className="w-full h-full rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative overflow-hidden shadow-lg pointer-events-none"
               >
                 {/* Center pearl inlay */}
-                <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" />
+                <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
                 </div>
               </div>
             </div>

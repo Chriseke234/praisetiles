@@ -59,31 +59,69 @@ export const ChatProvider: React.FC<{
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    // Fetch last messages
-    supabase
-      .from('room_messages')
-      .select(`
-        id, room_id, user_id, content, message_type, created_at,
-        p:user_id (display_name, avatar_url)
-      `)
-      .eq('room_id', roomId)
-      .order('created_at', { ascending: true })
-      .limit(SOCIAL_CONFIG.CHAT.MAX_MESSAGES_PER_ROOM)
-      .then(({ data }) => {
-        if (data) {
-          const formatted: RoomChatMessage[] = (data as unknown as ChatMessageDbRow[]).map((m) => ({
-            id:          m.id,
-            roomId:      m.room_id,
-            userId:      m.user_id,
-            displayName: m.p?.display_name ?? 'Player',
-            avatarUrl:   m.p?.avatar_url ?? null,
-            content:     m.content,
-            messageType: m.message_type,
-            createdAt:   m.created_at,
-          }));
-          setMessages(formatted);
+    // Fetch last messages safely without foreign key join failures
+    const fetchChatMessages = async () => {
+      try {
+        const { data: rows, error: msgErr } = await supabase
+          .from('room_messages')
+          .select('id, room_id, user_id, content, message_type, created_at')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: true })
+          .limit(SOCIAL_CONFIG.CHAT.MAX_MESSAGES_PER_ROOM);
+
+        if (msgErr) {
+          console.warn('[ChatContext] Failed to load messages:', msgErr.message);
+          return;
         }
-      });
+
+        if (!rows || rows.length === 0) {
+          setMessages([]);
+          return;
+        }
+
+        // Fetch display names for distinct user IDs
+        const userIds = Array.from(new Set(rows.map((r: { user_id: string }) => r.user_id).filter(Boolean)));
+        let profileMap: Record<string, { display_name?: string; avatar_url?: string | null }> = {};
+
+        if (userIds.length > 0) {
+          try {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url')
+              .in('id', userIds);
+
+            if (profs) {
+              profileMap = Object.fromEntries(profs.map((p: { id: string; display_name?: string; avatar_url?: string | null }) => [p.id, p]));
+            }
+          } catch (profErr) {
+            console.warn('[ChatContext] Non-fatal profile lookup error:', profErr);
+          }
+        }
+
+        const formatted: RoomChatMessage[] = rows.map((m: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          content: string;
+          message_type: RoomChatMessage['messageType'];
+          created_at: string;
+        }) => ({
+          id:          m.id,
+          roomId:      m.room_id,
+          userId:      m.user_id,
+          displayName: profileMap[m.user_id]?.display_name ?? (m.user_id === user?.id ? (profile?.displayName ?? 'You') : 'Player'),
+          avatarUrl:   profileMap[m.user_id]?.avatar_url ?? null,
+          content:     m.content,
+          messageType: m.message_type,
+          createdAt:   m.created_at,
+        }));
+        setMessages(formatted);
+      } catch (err) {
+        console.warn('[ChatContext] Error loading initial chat messages:', err);
+      }
+    };
+
+    fetchChatMessages();
 
     // Realtime subscription
     const channel = supabase
@@ -110,7 +148,11 @@ export const ChatProvider: React.FC<{
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('[ChatContext] Realtime subscription error:', err);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

@@ -365,14 +365,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    channel.subscribe((status) => {
+    channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        // Track presence
+        // Track presence safely
         supabase.auth.getUser().then(({ data }) => {
           if (data?.user) {
-            channel.track({ userId: data.user.id, online_at: new Date().toISOString() });
+            channel.track({ userId: data.user.id, online_at: new Date().toISOString() }).catch((trackErr) => {
+              console.warn('[RoomContext] Realtime presence track non-fatal:', trackErr);
+            });
           }
+        }).catch((authErr) => {
+          console.warn('[RoomContext] Realtime auth user lookup non-fatal:', authErr);
         });
+      } else if (status === 'CHANNEL_ERROR') {
+        console.warn('[RoomContext] Realtime channel error for room', roomId, err);
       }
     });
 

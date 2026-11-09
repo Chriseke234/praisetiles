@@ -27,15 +27,22 @@ AS $$
   );
 $$;
 
--- 2. Foreign Key: Link room_participants.user_id directly to public.profiles.id
+-- 2. Foreign Keys: Link room_participants and room_messages to public.profiles.id
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'fk_room_participants_profiles'
   ) THEN
-    -- Ensure any orphaned participant records without profiles don't block the constraint
     ALTER TABLE public.room_participants
       ADD CONSTRAINT fk_room_participants_profiles
+      FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_room_messages_profiles'
+  ) THEN
+    ALTER TABLE public.room_messages
+      ADD CONSTRAINT fk_room_messages_profiles
       FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
   END IF;
 END $$;
@@ -149,6 +156,39 @@ BEGIN
   );
 END;
 $$;
+
+-- 9. Ensure multiplayer tables are published to supabase_realtime
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.rooms;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.room_participants;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.nominations;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.room_matches;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.match_participants;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.room_messages;
+  EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL;
+  END;
+END $$;
 
 DO $$ BEGIN
   RAISE NOTICE 'Success: Multiplayer RLS and schema relations updated';

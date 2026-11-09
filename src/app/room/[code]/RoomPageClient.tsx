@@ -14,6 +14,7 @@ import { ChatProvider } from '@/lib/multiplayer/ChatContext';
 import { RoomLobby } from '@/components/multiplayer/RoomLobby';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface RoomPageClientProps {
   inviteCode: string;
@@ -109,8 +110,10 @@ function RoomJoiner({ inviteCode }: RoomPageClientProps) {
 
 export function RoomPageClient({ inviteCode }: RoomPageClientProps) {
   return (
-    <RoomProvider>
-      <RoomJoiner inviteCode={inviteCode} />
-    </RoomProvider>
+    <ErrorBoundary>
+      <RoomProvider>
+        <RoomJoiner inviteCode={inviteCode} />
+      </RoomProvider>
+    </ErrorBoundary>
   );
 }

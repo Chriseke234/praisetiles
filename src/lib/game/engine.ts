@@ -258,17 +258,7 @@ export class GameEngine {
     const adjustedTime = now - this.calibrationOffsetSec;
     const timeUntilHit = note.time - adjustedTime;
 
-    // Ensure note is currently visible/active on screen
-    // It must have entered the screen (timeUntilHit <= approachTime)
-    // and not have passed below the bottom miss line (timeUntilHit >= -goodWindow)
-    if (timeUntilHit > approachTime || timeUntilHit < -goodWindow) {
-      return;
-    }
-
-    // Determine judgement grade:
-    // If it's near the bottom target zone, use high-precision timing grade.
-    // If it's tapped higher up on screen (e.g. halfway down the screen),
-    // it successfully scores!
+    // Determine judgement grade based on timing accuracy:
     const absDiff = Math.abs(timeUntilHit);
     let grade: HitGrade;
     if (absDiff <= GAMEPLAY_CONFIG.TIMING_WINDOWS.PERFECT_SEC) {
@@ -277,10 +267,13 @@ export class GameEngine {
       grade = 'GREAT';
     } else if (absDiff <= GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC) {
       grade = 'GOOD';
-    } else {
+    } else if (timeUntilHit > 0) {
       // Tapped while falling earlier on the screen (e.g. halfway down screen)
       // Award GREAT if in the lower half of approach, GOOD if higher up
       grade = timeUntilHit <= approachTime * 0.6 ? 'GREAT' : 'GOOD';
+    } else {
+      // Tapped near the bottom edge before leaving screen
+      grade = 'GOOD';
     }
 
     note.hit = true;

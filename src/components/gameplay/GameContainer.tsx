@@ -18,6 +18,7 @@ import { MilestoneProgressBar } from './MilestoneProgressBar';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { Volume2, VolumeX, ArrowLeft, Sliders, RotateCcw, Award, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useKeyBindings } from '@/hooks/useKeyBindings';
 
 interface GameContainerProps {
   map: RhythmMap;
@@ -65,10 +66,13 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     return 0;
   });
   const [showCalibration, setShowCalibration] = useState(false);
+  const { keyToLane, keys: keyBindings } = useKeyBindings();
+  const heldKeysRef = useRef<Set<string>>(new Set());
 
   const engineRef = useRef<GameEngine | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const activeLanesTimeoutRef = useRef<NodeJS.Timeout[]>([]);
+  const judgementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialCalibrationRef = useRef<number>(calibrationMs);
 
   // Update calibration offset on active engine dynamically
@@ -85,14 +89,20 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       onScoreUpdate: (state) => setScoreState(state),
       onNoteJudged: (noteId, grade, lane) => {
         setLatestJudgement({ grade, lane, key: Date.now() });
+        if (judgementTimeoutRef.current) clearTimeout(judgementTimeoutRef.current);
+        judgementTimeoutRef.current = setTimeout(() => {
+          setLatestJudgement(null);
+        }, 600);
+
         setNotes((prevNotes) =>
-          prevNotes.map((n) => (n.id === noteId ? { ...n, hit: true, grade } : n))
+          prevNotes.map((n) =>
+            n.id === noteId ? { ...n, hit: true, grade, hitTimestamp: Date.now() } as Note : n
+          )
         );
       },
       onRunFailed: (result) => {
         audioPlayer.stop();
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-        // Show in-lane fail cards (Screen 3 inspiration)
         setFailedResult(result);
       },
       onRunCompleted: (result) => {
@@ -130,26 +140,25 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       engine.stop();
       audioPlayer.stop();
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (judgementTimeoutRef.current) clearTimeout(judgementTimeoutRef.current);
       timeouts.forEach(clearTimeout);
     };
   }, [initEngine, audioPlayer]);
 
-  // Start match kickoff on first START tile tap
+  // Start match kickoff smoothly on user action without consuming song notes
   const handleStartGame = useCallback(async () => {
     if (!isWaitingForStart) return;
     setIsWaitingForStart(false);
 
     if (engineRef.current) {
+      // Warm up audio context first so start is instantaneous without clock freeze
+      await audioPlayer.ensureContext();
       engineRef.current.start();
-      const firstNote = notes[0];
-      if (firstNote) {
-        engineRef.current.handleDirectTileDown(firstNote.id, firstNote.lane);
-      }
       await audioPlayer.play(0, () => {
         engineRef.current?.handleCompletion();
       });
     }
-  }, [isWaitingForStart, notes, audioPlayer]);
+  }, [isWaitingForStart, audioPlayer]);
 
   // Restart song cleanly from in-lane fail state
   const handleRestart = useCallback(() => {
@@ -188,6 +197,49 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       engineRef.current.handleLaneInput(lane);
     }
   }, [isWaitingForStart, handleStartGame]);
+
+  // Desktop Keyboard Event Listeners (D, F, J, K + Space to Start)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (isWaitingForStart) {
+        if (e.code === 'Space' || e.code === 'Enter' || keyToLane(e.key) >= 0) {
+          e.preventDefault();
+          handleStartGame();
+        }
+        return;
+      }
+
+      const lane = keyToLane(e.key);
+      if (lane >= 0) {
+        e.preventDefault();
+        const lowerKey = e.key.toLowerCase();
+        if (!heldKeysRef.current.has(lowerKey)) {
+          heldKeysRef.current.add(lowerKey);
+          handleLanePointerDown(lane);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const lane = keyToLane(e.key);
+      if (lane >= 0) {
+        heldKeysRef.current.delete(e.key.toLowerCase());
+        if (engineRef.current) {
+          engineRef.current.handlePointerUp(lane);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isWaitingForStart, handleStartGame, keyToLane, handleLanePointerDown]);
 
   const handlePointerLeaveArea = useCallback(() => {
     if (engineRef.current) {
@@ -336,6 +388,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
+            keyBindings={keyBindings}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
             onLanePointerDown={handleLanePointerDown}
@@ -353,11 +406,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
+            keyBindings={keyBindings}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
             onLanePointerDown={handleLanePointerDown}
             onPointerLeaveArea={handlePointerLeaveArea}
             reducedMotion={reducedMotion}
+            isWaitingForStart={isWaitingForStart}
+            onStartGame={handleStartGame}
+            songTitle={map.songTitle}
+            artist="Praise & Worship"
           />
         )}
 

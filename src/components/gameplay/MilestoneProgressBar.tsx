@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Star, Crown } from 'lucide-react';
 
 interface MilestoneProgressBarProps {
@@ -23,7 +23,7 @@ const MILESTONES: Milestone[] = [
   { type: 'crown', percent: 100, label: 'Crown 3' },
 ];
 
-export const MilestoneProgressBar: React.FC<MilestoneProgressBarProps> = ({
+export const MilestoneProgressBar: React.FC<MilestoneProgressBarProps> = memo(({
   progressPercent,
 }) => {
   const clampedProgress = Math.min(100, Math.max(0, progressPercent));
@@ -87,4 +87,6 @@ export const MilestoneProgressBar: React.FC<MilestoneProgressBarProps> = ({
       </div>
     </div>
   );
-};
+});
+
+MilestoneProgressBar.displayName = 'MilestoneProgressBar';

@@ -1,14 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Note } from '@/types/game';
 import { GAMEPLAY_CONFIG } from '@/config/gameplay';
+import { Play } from 'lucide-react';
 
 interface GuitarTilesViewProps {
   notes: readonly Note[];
   currentTime: number;
   approachTime?: number;
   activeLanes: boolean[];
+  keyBindings?: string[];
   /** Called when the player taps/clicks directly on a falling tile */
   onTilePointerDown: (noteId: string, lane: number) => void;
   /** Called when the player releases a falling tile */
@@ -18,29 +20,44 @@ interface GuitarTilesViewProps {
   /** Called when pointer leaves the game area (cancel all sustains) */
   onPointerLeaveArea: () => void;
   reducedMotion: boolean;
+  isWaitingForStart?: boolean;
+  onStartGame?: () => void;
+  songTitle?: string;
+  artist?: string;
 }
 
-export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
+export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
   notes,
   currentTime,
   approachTime = GAMEPLAY_CONFIG.APPROACH_TIME_SECONDS,
   activeLanes,
+  keyBindings,
   onTilePointerDown,
   onTilePointerUp,
   onLanePointerDown,
   onPointerLeaveArea,
   reducedMotion,
+  isWaitingForStart = false,
+  onStartGame,
+  songTitle,
+  artist,
 }) => {
   const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
 
-  // Visible notes within approach window
+  // Visible notes within approach window (including recently hit tiles for 150ms hit burst)
   const visibleNotes = notes.filter((n) => {
     const duration = n.duration ?? 0;
     const timeUntilEnd = n.time + duration - currentTime;
     const timeUntilStart = n.time - currentTime;
 
-    if (n.hit && n.type !== 'long') return false;
+    // Completed long notes or missed notes hide immediately
     if (n.sustainState === 'completed' || (n.hit && n.grade === 'MISS')) return false;
+
+    // Hit short notes stay visible for 150ms to display hit burst feedback
+    if (n.hit && n.type !== 'long') {
+      const hitAge = (n as any).hitTimestamp ? Date.now() - (n as any).hitTimestamp : 999;
+      return hitAge < 150;
+    }
 
     return timeUntilStart <= approachTime && timeUntilEnd >= -goodWindow;
   });
@@ -66,6 +83,8 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
         {/* 4 Guitar Lanes — Visual strings & interactive touch targets */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
+          const keyLabel = keyBindings?.[lane]?.toUpperCase();
+
           return (
             <div
               key={lane}
@@ -93,9 +112,50 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
                   className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-amber-500/35 via-yellow-500/15 to-transparent pointer-events-none animate-pulse"
                 />
               )}
+
+              {/* Desktop Keycap Badge (D, F, J, K) */}
+              {keyLabel && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center justify-center w-7 h-7 rounded-lg bg-amber-950/80 border border-amber-600/40 text-[11px] font-mono font-bold text-yellow-300 pointer-events-none shadow-md backdrop-blur-xs">
+                  {keyLabel}
+                </div>
+              )}
             </div>
           );
         })}
+
+        {/* Floating Song Intro Banner (Visible before player taps START) */}
+        {isWaitingForStart && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+            <div className="px-6 py-6 rounded-3xl bg-[#1c0f05]/90 border border-amber-500/40 shadow-[0_0_40px_rgba(245,158,11,0.3)] backdrop-blur-md max-w-sm w-full space-y-2 text-center">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 inline-block">
+                Guitar Arena
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide drop-shadow-md">
+                {songTitle || 'Praise Track'}
+              </h2>
+              <p className="text-xs text-amber-300 font-semibold tracking-wider">
+                {artist || 'Acoustic Worship'}
+              </p>
+
+              <div className="pt-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartGame?.();
+                  }}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] hover:scale-102 active:scale-98 transition-transform cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Play className="w-4 h-4 fill-black" />
+                  <span>START PRAISE</span>
+                </button>
+              </div>
+
+              <p className="text-[10px] text-gray-400 font-medium pt-1">
+                Tap button or press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 font-mono text-[9px]">SPACE</kbd> to begin
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Falling Guitar Tiles (Short & Long Sustain Beams) */}
         {visibleNotes.map((note) => {
@@ -196,6 +256,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
           }
 
           // Short Normal Guitar Fret Tile (Entire container is reliable hit target)
+          const isHitBurst = note.hit && note.grade !== 'MISS';
           const progress = 1 - timeUntilHit / approachTime;
           const topPercent = progress * hitLinePercent;
 
@@ -220,8 +281,17 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
               className="px-2 z-20 cursor-pointer h-28 sm:h-36"
             >
               <div
-                className="w-full h-full rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(250,204,21,0.5)] pointer-events-none"
+                className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-100 ${
+                  isHitBurst
+                    ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-300 to-yellow-400 shadow-[0_0_35px_rgba(250,204,21,0.95)] scale-105'
+                    : 'border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-[0_4px_20px_rgba(250,204,21,0.5)]'
+                }`}
               >
+                {/* Surface Ping on Hit */}
+                {isHitBurst && (
+                  <div className="absolute inset-0 bg-white/50 animate-ping rounded-2xl pointer-events-none" />
+                )}
+
                 {/* Center pearl inlay */}
                 <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none mb-1">
                   <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
@@ -234,4 +304,6 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
       </div>
     </div>
   );
-};
+});
+
+GuitarTilesView.displayName = 'GuitarTilesView';

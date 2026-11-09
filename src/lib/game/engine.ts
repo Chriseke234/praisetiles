@@ -424,6 +424,8 @@ export class GameEngine {
     }
 
     const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
+    // Buffer window allows early lane taps within 500ms to register as hits rather than empty-lane penalties
+    const earlyBufferSec = 0.500;
     // Apply user audio-visual calibration offset
     const adjustedTime = now - this.calibrationOffsetSec;
 
@@ -434,10 +436,11 @@ export class GameEngine {
     for (let i = 0; i < this.notes.length; i++) {
       const note = this.notes[i];
       if (note.lane === lane && !note.hit) {
-        const diff = adjustedTime - note.time;
-        if (Math.abs(diff) <= goodWindow) {
-          if (Math.abs(diff) < minDiff) {
-            minDiff = Math.abs(diff);
+        const timeUntilHit = note.time - adjustedTime;
+        if (Math.abs(timeUntilHit) <= goodWindow || (timeUntilHit > 0 && timeUntilHit <= earlyBufferSec)) {
+          const absDiff = Math.abs(timeUntilHit);
+          if (absDiff < minDiff) {
+            minDiff = absDiff;
             candidateNote = note;
           }
         }
@@ -447,7 +450,11 @@ export class GameEngine {
     if (candidateNote) {
       // Valid hit!
       const diff = adjustedTime - candidateNote.time;
-      const grade = getTimingJudgement(diff);
+      let grade = getTimingJudgement(diff);
+      if (!grade && diff < 0 && Math.abs(diff) <= earlyBufferSec) {
+        // Early tap caught in touch buffer
+        grade = 'GOOD';
+      }
       if (grade) {
         candidateNote.hit = true;
         candidateNote.grade = grade;

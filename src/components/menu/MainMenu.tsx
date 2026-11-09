@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { InstrumentType } from '@/types/game';
 import {
   Volume2,
@@ -19,6 +19,17 @@ import {
   ChevronRight,
   Sliders,
   LogIn,
+  Music,
+  Compass,
+  Radio,
+  Clock,
+  Heart,
+  Share2,
+  Headphones,
+  Gamepad2,
+  BookOpen,
+  Info,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocial } from '@/lib/social/SocialContext';
@@ -26,6 +37,8 @@ import { useTournament } from '@/lib/tournament/TournamentContext';
 import { getGemTier } from '@/config/progression';
 import dynamic from 'next/dynamic';
 import { BrandLogo } from '@/components/common/BrandLogo';
+import { PraiseMascot } from '@/components/common/PraiseMascot';
+import { FEATURED_GOSPEL_SONGS, GospelSongItem } from '@/config/gospelSongs';
 import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
 import { NotificationDrawer } from '@/components/social/NotificationDrawer';
@@ -568,289 +581,524 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       )}
 
       {/* Main Hero & Rhythm Portal Content */}
-      <main className="relative z-10 w-full max-w-5xl lg:max-w-6xl flex flex-col items-center justify-center my-auto py-6 sm:py-8 text-center">
+      <main className="relative z-10 w-full max-w-6xl xl:max-w-7xl flex flex-col items-center justify-center my-auto py-8 sm:py-12 text-center space-y-16">
         {!showInstrumentSelect ? (
-          <div className="w-full flex flex-col items-center gap-6 sm:gap-8">
-            {/* Hero Section */}
-            <div className="space-y-3 max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold tracking-wide uppercase shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Browser-First Gospel Rhythm Gaming</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
-                Play the Rhythm of Praise
-              </h2>
-              <p className="text-sm sm:text-base text-gray-400 max-w-lg mx-auto">
-                Upload your gospel worship tracks or play the demo praise hymn. Master strict-timing 4-lane rhythm across Piano and Guitar modes.
-              </p>
+          <div className="w-full flex flex-col items-center gap-12 sm:gap-16">
+            {/* HERO SECTION: Mascoted Desktop-First Banner */}
+            <section className="relative w-full rounded-3xl bg-gradient-to-b from-[#130f24]/90 via-[#0e0c1a]/95 to-[#08070d] border border-purple-500/20 p-6 sm:p-10 lg:p-12 overflow-hidden shadow-2xl">
+              {/* Subtle dotted halftone overlay */}
+              <div className="absolute inset-0 bg-halftone-dots opacity-40 pointer-events-none" />
 
-              {/* Primary Call to Action */}
-              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              {/* Ambient Radial Color Washes */}
+              <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center text-left">
+                {/* Left Column: Headlines & Call to Actions */}
+                <div className="lg:col-span-7 space-y-5 text-center lg:text-left">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold tracking-wider uppercase shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Premier Gospel Rhythm Gaming Arena</span>
+                  </div>
+
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.08]">
+                    YOUR MUSIC.<br />
+                    <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-purple-400 bg-clip-text text-transparent">
+                      YOUR RHYTHM.
+                    </span><br />
+                    YOUR ARENA.
+                  </h1>
+
+                  <p className="text-sm sm:text-base text-gray-300 max-w-xl leading-relaxed">
+                    Experience gospel music like never before. Play, compete and discover a growing world of gospel rhythm.
+                  </p>
+
+                  {/* Primary & Secondary CTAs */}
+                  <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                    <button
+                      onClick={() => setShowInstrumentSelect(true)}
+                      className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black text-sm sm:text-base transition-all duration-200 shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2.5"
+                    >
+                      <Play className="w-5 h-5 fill-black stroke-black" />
+                      <span>ENTER THE ARENA</span>
+                    </button>
+
+                    <a
+                      href="#featured-music"
+                      className="px-6 py-3.5 rounded-2xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 backdrop-blur-md shadow-md"
+                    >
+                      <Compass className="w-4 h-4 text-purple-400" />
+                      <span>EXPLORE MUSIC</span>
+                    </a>
+                  </div>
+
+                  {/* Quick Feature Badges */}
+                  <div className="pt-3 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs text-gray-400">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span>Zero latency 4-lane engine</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span>Direct touch & mouse tiles</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                      <span>Realtime 4-player lobbies</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Aria Mascot & Visual Feature Card */}
+                <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
+                  <div className="relative flex flex-col items-center">
+                    <PraiseMascot
+                      pose="welcoming"
+                      size="xl"
+                      showSpeechBubble
+                      speechText="Welcome! Ready to play the rhythm?"
+                      className="animate-brand-entrance"
+                    />
+
+                    {/* Featured Track Floating Capsule */}
+                    <div className="mt-4 px-4 py-2.5 rounded-2xl bg-[#171426]/90 border border-purple-500/30 backdrop-blur-md shadow-lg flex items-center gap-3 max-w-xs">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-amber-500/40">
+                        <img
+                          src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=120&auto=format&fit=crop"
+                          alt="Amazing Grace"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="text-left min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Featured Hymn</span>
+                        <p className="text-xs font-bold text-white truncate">Amazing Grace (Praise Anthem)</p>
+                        <p className="text-[10px] text-gray-400">120 BPM &bull; Piano &amp; Guitar</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION A: GAME MODES */}
+            <section className="w-full space-y-6 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-gray-800/80 pb-3">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                    <Gamepad2 className="w-6 h-6 text-amber-400" />
+                    <span>Select Game Mode</span>
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                    Choose your rhythm discipline and start your praise session.
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-purple-400">4 Lanes &bull; High Precision</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Solo Piano */}
                 <button
-                  onClick={() => setShowInstrumentSelect(true)}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-extrabold text-sm sm:text-base transition-all duration-200 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2.5"
+                  onClick={() => onSelectInstrument('piano')}
+                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131024] to-[#0c0a17] border border-cyan-500/30 hover:border-cyan-400 transition-all duration-200 hover:shadow-xl hover:shadow-cyan-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
                 >
-                  <Play className="w-4 h-4 fill-black stroke-black" />
-                  <span>Start Praise Session</span>
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-md">
+                        <Music className="w-6 h-6 stroke-[2.2]" />
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase">
+                        Piano
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-cyan-300 transition flex items-center gap-1.5">
+                      Solo Piano
+                      <ChevronRight className="w-4 h-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Follow the rhythm. Master every note.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-cyan-400 font-bold">Falling Keys</span>
+                    <span className="text-gray-400 group-hover:text-white transition">Play Piano &rarr;</span>
+                  </div>
                 </button>
+
+                {/* 2. Solo Guitar */}
+                <button
+                  onClick={() => onSelectInstrument('guitar')}
+                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#181124] to-[#0c0a17] border border-amber-500/30 hover:border-amber-400 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md">
+                        <Radio className="w-6 h-6 stroke-[2.2]" />
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
+                        Guitar
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-amber-300 transition flex items-center gap-1.5">
+                      Solo Guitar
+                      <ChevronRight className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Feel the rhythm. Play every sequence.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-amber-400 font-bold">Arcade Fretboard</span>
+                    <span className="text-gray-400 group-hover:text-white transition">Play Guitar &rarr;</span>
+                  </div>
+                </button>
+
+                {/* 3. Practice Mode */}
+                <button
+                  onClick={() => onSelectInstrument('piano')}
+                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
+                        <BookOpen className="w-6 h-6 stroke-[2.2]" />
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
+                        Practice
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-emerald-300 transition flex items-center gap-1.5">
+                      Practice Mode
+                      <ChevronRight className="w-4 h-4 text-emerald-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Learn the music at your own pace.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-emerald-400 font-bold">Safe Rehearsal</span>
+                    <span className="text-gray-400 group-hover:text-white transition">Practice &rarr;</span>
+                  </div>
+                </button>
+
+                {/* 4. Multiplayer Arena */}
                 <button
                   onClick={() => setShowMultiplayerModal(true)}
-                  className="px-5 py-3 rounded-2xl bg-gray-900/90 border border-purple-500/30 hover:border-purple-400 text-gray-200 hover:text-purple-300 font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 shadow-md shadow-purple-500/10"
+                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#1d0e2e] to-[#0c0a17] border border-purple-500/40 hover:border-purple-300 transition-all duration-200 hover:shadow-xl hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
                 >
-                  <Users className="w-4 h-4 text-purple-400" />
-                  <span>Multiplayer Arena</span>
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md">
+                        <Users className="w-6 h-6 stroke-[2.2]" />
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase">
+                        Realtime
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-purple-300 transition flex items-center gap-1.5">
+                      Multiplayer
+                      <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Challenge friends and compete together.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-purple-300 font-bold">Up to 4 Players</span>
+                    <span className="text-gray-400 group-hover:text-white transition">Enter Lobby &rarr;</span>
+                  </div>
                 </button>
               </div>
-            </div>
+            </section>
 
-            {/* 2-Column Responsive Game Mode Portal Grid */}
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-              {/* Card 1: Solo Leveling */}
-              <button
-                onClick={() => setShowInstrumentSelect(true)}
-                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-gray-900/60 to-gray-950 border border-amber-500/30 hover:border-amber-400/80 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/10 hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-black shadow-md shadow-amber-500/30 shrink-0 group-hover:scale-105 transition">
-                    <Flame className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
-                    Strict Mode
-                  </span>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
-                    Solo Leveling
-                    <ChevronRight className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
-                    Test your timing across 3 Star stages. One missed note or bad tap ends the run immediately.
+            {/* SECTION B: FEATURED GOSPEL MUSIC */}
+            <section id="featured-music" className="w-full space-y-6 text-left scroll-mt-24">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-gray-800/80 pb-3">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                    <Headphones className="w-6 h-6 text-purple-400" />
+                    <span>Featured Gospel Music</span>
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                    Curated hymns and worship compositions mapped for 4-lane rhythm mastery.
                   </p>
                 </div>
+                <span className="text-xs text-gray-400">
+                  {FEATURED_GOSPEL_SONGS.length} Sanctuary Tracks Available
+                </span>
+              </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
-                  <span className="text-amber-400 font-semibold">100 Pts / Perfect Hit</span>
-                  <span className="text-gray-500">Progressive Density &bull; Star 1–3</span>
-                </div>
-              </button>
-
-              {/* Card 2: Multiplayer & Quick Play */}
-              <button
-                onClick={() => setShowMultiplayerModal(true)}
-                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-purple-950/20 to-gray-950 border border-purple-500/30 hover:border-purple-400/80 transition-all duration-200 hover:shadow-xl hover:shadow-purple-500/15 hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white shadow-md shadow-purple-500/30 shrink-0 group-hover:scale-105 transition">
-                    <Users className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase tracking-wide">
-                    Live Arena
-                  </span>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-purple-300 transition flex items-center gap-2">
-                    Multiplayer Battles
-                    <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
-                    Synchronized rhythm matches for up to 4 players. Join public lobbies, invite friends, or hop into Quick Play.
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
-                  <span className="text-purple-300 font-semibold">Realtime Clock Sync</span>
-                  <span className="text-gray-500">Shared Authoritative Map</span>
-                </div>
-              </button>
-
-              {/* Card 3: Championship Tournaments */}
-              <button
-                onClick={() => setShowTournamentsHub(true)}
-                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-gray-900/60 to-gray-950 border border-amber-500/30 hover:border-amber-400/80 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/10 hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-black shadow-md shadow-amber-500/30 shrink-0 group-hover:scale-105 transition">
-                    <Award className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
-                    Ranked
-                  </span>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
-                    Championship Tournaments
-                    <ChevronRight className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
-                    Single-elimination championship brackets (4, 8 & 16 players). Check in, climb placements, and win seasonal trophies.
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
-                  <span className="text-amber-400 font-semibold">Single Elimination</span>
-                  <span className="text-gray-500">Seasonal Trophies & Ranks</span>
-                </div>
-              </button>
-
-              {/* Card 4: Player Progress & Quick Stats */}
-              <div
-                onClick={onOpenProfile}
-                className="group relative p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-gray-900/90 via-gray-900/60 to-gray-950 border border-gray-800 hover:border-gray-700 transition-all duration-200 flex flex-col justify-between cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-4">
+              {/* Music Catalogue Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {FEATURED_GOSPEL_SONGS.map((song) => (
                   <div
-                    style={{ backgroundColor: tier.colorHex }}
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-black font-black text-lg shadow-md shrink-0 group-hover:scale-105 transition"
+                    key={song.id}
+                    className="group relative rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-purple-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 overflow-hidden flex flex-col justify-between"
                   >
-                    {tier.gemRank[0]}
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-800 text-gray-300 border border-gray-700 uppercase tracking-wide">
-                    {user ? 'Authenticated' : 'Guest'}
-                  </span>
-                </div>
+                    {/* Song Cover Artwork with Vinyl Edge Preview */}
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-950">
+                      <img
+                        src={song.coverUrl}
+                        alt={song.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#110e1f] via-transparent to-black/30" />
 
-                <div className="mt-4">
-                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
-                    {user && profile ? profile.displayName : 'Guest Rhythm Journey'}
-                    <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
-                    Current Gem Rank: <strong className="text-white">{tier.gemRank}</strong> &bull; Level {progress?.level || 1}. Track your stats, accuracy, and highest streaks.
+                      {/* Difficulty and Mode Badges */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          song.difficulty === 'Easy' ? 'bg-emerald-500/80 text-black' :
+                          song.difficulty === 'Medium' ? 'bg-amber-500/80 text-black' :
+                          song.difficulty === 'Hard' ? 'bg-orange-500/80 text-white' :
+                          'bg-rose-500/80 text-white'
+                        }`}>
+                          {song.difficulty}
+                        </span>
+                        {song.isTrending && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/80 text-white">
+                            Trending
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Duration Pill */}
+                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-sm text-[10px] font-mono text-gray-300 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span>{song.duration}</span>
+                      </div>
+                    </div>
+
+                    {/* Metadata & Actions */}
+                    <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-base font-black text-white group-hover:text-amber-300 transition line-clamp-1">
+                          {song.title}
+                        </h3>
+                        <p className="text-xs text-purple-300 font-medium line-clamp-1 mt-0.5">
+                          {song.artist}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">
+                          {song.description}
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <Headphones className="w-3.5 h-3.5 text-gray-500" />
+                            {song.playCount.toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Heart className="w-3.5 h-3.5 text-rose-400/80" />
+                            {song.likes.toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Play Button */}
+                        <button
+                          onClick={() => onSelectInstrument('piano')}
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition-transform duration-200 hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-black stroke-black" />
+                          <span>Play</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* SECTION C & D: COMMUNITY & COMPETITION HUB */}
+            <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
+              {/* Competition Card */}
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#151124] to-[#0c0a17] border border-amber-500/30 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                      <Trophy className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 uppercase">
+                      Ranked Season 1
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-black text-white mt-4">Championship Tournaments</h3>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1 leading-relaxed">
+                    Compete in single-elimination brackets with up to 16 players. Win seasonal trophies and advance your gem rank.
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
-                  <span className="text-gray-300 font-semibold">{progress?.xp ? `${progress.xp.toLocaleString()} XP` : '0 XP'}</span>
-                  <span className="text-amber-400 font-semibold">{user ? 'View Full Profile &rarr;' : 'Sign In to Save &rarr;'}</span>
+                <div className="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-between">
+                  <div className="text-xs text-gray-400">
+                    <span className="text-amber-400 font-bold">Weekly Prize Pools</span> &bull; 8-Player Brackets
+                  </div>
+                  <button
+                    onClick={() => setShowTournamentsHub(true)}
+                    className="px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-amber-500/40 text-amber-300 text-xs font-bold transition flex items-center gap-1.5"
+                  >
+                    <span>View Brackets</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            </div>
+
+              {/* Community & Progression Card */}
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#121021] to-[#0c0a17] border border-purple-500/30 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                      <Users className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 uppercase">
+                      {user ? 'Verified Profile' : 'Guest Traveler'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-black text-white mt-4">
+                    {user && profile ? profile.displayName : 'Join the PraiseTiles Community'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1 leading-relaxed">
+                    Track your personal rhythm streak, share songs with friends, and climb the global leaderboards with authentic Supabase syncing.
+                  </p>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-between">
+                  <div className="text-xs text-gray-400">
+                    <strong className="text-white">{tier.gemRank}</strong> &bull; Level {progress?.level || 1}
+                  </div>
+                  <button
+                    onClick={user ? onOpenProfile : onOpenAuth}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-purple-600/25"
+                  >
+                    <span>{user ? 'My Profile' : 'Sign In / Register'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
         ) : (
           /* Instrument Selection View */
-          <div className="w-full flex flex-col items-center gap-6 animate-fadeIn">
-            <div className="space-y-1">
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
-                Choose Your Instrument
+          <div className="w-full flex flex-col items-center gap-8 animate-fadeIn max-w-4xl mx-auto">
+            <div className="space-y-2 text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase">
+                <Music className="w-3.5 h-3.5 text-amber-400" />
+                <span>Select Your Instrument</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-white">
+                Choose Your Rhythm Experience
               </h2>
-              <p className="text-xs sm:text-sm text-gray-400">
-                Both instruments use the exact same 4-lane timing and scoring engine.
+              <p className="text-xs sm:text-sm text-gray-400 max-w-md mx-auto">
+                Both instruments use the exact same 4-lane timing and scoring engine with custom tailored visuals.
               </p>
             </div>
 
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Piano Tiles */}
               <button
                 onClick={() => onSelectInstrument('piano')}
-                className="group relative flex flex-col items-center text-center p-6 rounded-3xl bg-gradient-to-b from-gray-900 to-gray-950 border border-cyan-500/30 hover:border-cyan-400 transition duration-200 hover:shadow-xl hover:shadow-cyan-500/10 hover:scale-[1.01] active:scale-[0.99]"
+                className="group relative flex flex-col items-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-cyan-500/40 hover:border-cyan-300 transition duration-300 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                  <svg className="w-7 h-7 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <line x1="7" y1="4" x2="7" y2="13" />
-                    <line x1="11" y1="4" x2="11" y2="13" />
-                    <line x1="15" y1="4" x2="15" y2="13" />
-                    <line x1="9" y1="4" x2="9" y2="11" strokeWidth="3" />
-                    <line x1="13" y1="4" x2="13" y2="11" strokeWidth="3" />
-                  </svg>
+                <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center mb-5 group-hover:scale-110 transition shadow-lg">
+                  <Music className="w-8 h-8 text-cyan-400 stroke-[2.2]" />
                 </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-cyan-300">
+                <h3 className="text-xl font-black text-white group-hover:text-cyan-300">
                   Piano Tiles
                 </h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  Falling neon keys, crisp contrast, and geometric hit-zone flow.
+                <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                  Falling neon keys, high contrast geometric hit-zones, and elegant piano acoustic textures.
                 </p>
-                <span className="mt-4 inline-block text-xs font-semibold text-cyan-400 group-hover:underline">
-                  Select Piano &rarr;
+                <span className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-xs font-bold text-cyan-300 group-hover:bg-cyan-500 group-hover:text-black transition">
+                  <span>Enter Piano Mode</span>
+                  <ChevronRight className="w-4 h-4" />
                 </span>
               </button>
 
               {/* Guitar Tiles */}
               <button
                 onClick={() => onSelectInstrument('guitar')}
-                className="group relative flex flex-col items-center text-center p-6 rounded-3xl bg-gradient-to-b from-gray-900 to-gray-950 border border-amber-500/30 hover:border-amber-400 transition duration-200 hover:shadow-xl hover:shadow-amber-500/10 hover:scale-[1.01] active:scale-[0.99]"
+                className="group relative flex flex-col items-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#181124] to-[#0c0a17] border border-amber-500/40 hover:border-amber-300 transition duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                  <svg className="w-7 h-7 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 6l4 4" />
-                    <path d="M12 8l4 4" />
-                    <circle cx="8" cy="16" r="5" />
-                    <line x1="12" y1="12" x2="20" y2="4" />
-                    <circle cx="8" cy="16" r="2" fill="currentColor" />
-                  </svg>
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center mb-5 group-hover:scale-110 transition shadow-lg">
+                  <Radio className="w-8 h-8 text-amber-400 stroke-[2.2]" />
                 </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-amber-300">
+                <h3 className="text-xl font-black text-white group-hover:text-amber-300">
                   Guitar Tiles
                 </h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  Arcade fretboard perspective, steel string guides, and neon fret glows.
+                <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                  Arcade fretboard perspective, steel string guides, and warm overdriven acoustic guitar tone.
                 </p>
-                <span className="mt-4 inline-block text-xs font-semibold text-amber-400 group-hover:underline">
-                  Select Guitar &rarr;
+                <span className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300 group-hover:bg-amber-500 group-hover:text-black transition">
+                  <span>Enter Guitar Mode</span>
+                  <ChevronRight className="w-4 h-4" />
                 </span>
               </button>
             </div>
 
             <button
               onClick={() => setShowInstrumentSelect(false)}
-              className="text-xs text-gray-400 hover:text-white transition mt-2 px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700"
+              className="text-xs text-gray-400 hover:text-white transition px-5 py-2.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 flex items-center gap-1.5"
             >
-              &larr; Back to Main Menu
+              <span>&larr; Back to Main Menu</span>
             </button>
           </div>
         )}
       </main>
 
-      {/* Footer Info */}
-      <footer className="relative z-10 w-full max-w-5xl lg:max-w-6xl text-center border-t border-gray-900 pt-4 text-xs text-gray-500 flex flex-col gap-2">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>PraiseTiles &copy; 2026. Browser-first gospel rhythm platform.</p>
-          <div className="flex items-center gap-3">
-            <p className="text-gray-400">
-              Touch or Mouse: Tap and hold tiles to the rhythm
+      {/* SECTION E: PREMIUM DESKTOP & MOBILE FOOTER */}
+      <footer className="relative z-10 w-full max-w-6xl xl:max-w-7xl text-left border-t border-gray-900 pt-8 pb-4 text-xs text-gray-500 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Col 1: Brand & Mission */}
+          <div className="space-y-3">
+            <BrandLogo size="sm" showSubtitle={false} />
+            <p className="text-xs text-gray-400 leading-relaxed">
+              PraiseTiles is a premier browser-based gospel rhythm gaming platform. Play worship music, climb competitive ranks, and compete with believers globally.
             </p>
-            <button
-              type="button"
-              onClick={() => setShowAudioEval(true)}
-              className="text-[11px] text-gray-500 hover:text-cyan-400 transition flex items-center gap-1"
-              title="Audio Intelligence Diagnostics"
-            >
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Audio Diagnostics</span>
-            </button>
+            <p className="text-[11px] text-gray-600">
+              &copy; 2026 PraiseTiles. All rights reserved.
+            </p>
           </div>
-        </div>
 
-        {/* Legal & Health Status Links */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-gray-400 pt-1">
-          <button
-            type="button"
-            onClick={() => setShowTermsModal(true)}
-            className="hover:text-amber-400 underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded"
-          >
-            Terms of Service
-          </button>
-          <span>&bull;</span>
-          <button
-            type="button"
-            onClick={() => setShowPrivacyModal(true)}
-            className="hover:text-amber-400 underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded"
-          >
-            Privacy Policy & Audio Retention
-          </button>
-          <span>&bull;</span>
-          <a
-            href="/api/health"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
-            <span>System Health (v7.0.0)</span>
-          </a>
+          {/* Col 2: Game Modes */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Game Modes</h4>
+            <ul className="space-y-1.5 text-xs text-gray-400">
+              <li><button onClick={() => onSelectInstrument('piano')} className="hover:text-amber-400 transition">Solo Piano</button></li>
+              <li><button onClick={() => onSelectInstrument('guitar')} className="hover:text-amber-400 transition">Solo Guitar</button></li>
+              <li><button onClick={() => onSelectInstrument('piano')} className="hover:text-amber-400 transition">Practice Rehearsal</button></li>
+              <li><button onClick={() => setShowMultiplayerModal(true)} className="hover:text-purple-400 transition">Realtime Multiplayer</button></li>
+            </ul>
+          </div>
+
+          {/* Col 3: Community & Competition */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Competition</h4>
+            <ul className="space-y-1.5 text-xs text-gray-400">
+              <li><button onClick={() => setShowTournamentsHub(true)} className="hover:text-amber-400 transition">Tournaments &amp; Brackets</button></li>
+              <li><button onClick={() => setShowLeaderboardModal(true)} className="hover:text-amber-400 transition">Global Leaderboards</button></li>
+              <li><button onClick={() => setShowFriendsModal(true)} className="hover:text-cyan-400 transition">Friends &amp; Social Challenges</button></li>
+              <li><button onClick={() => setShowAudioEval(true)} className="hover:text-cyan-400 transition flex items-center gap-1"><Activity className="w-3.5 h-3.5 text-cyan-400" /> Audio Diagnostics</button></li>
+            </ul>
+          </div>
+
+          {/* Col 4: Trust & Legal */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Trust &amp; Legal</h4>
+            <ul className="space-y-1.5 text-xs text-gray-400">
+              <li><button onClick={() => setShowTermsModal(true)} className="hover:text-amber-400 transition">Terms of Service</button></li>
+              <li><button onClick={() => setShowPrivacyModal(true)} className="hover:text-amber-400 transition">Privacy &amp; Data Rights</button></li>
+              <li><a href="/api/health" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Platform Status</a></li>
+            </ul>
+          </div>
         </div>
       </footer>
 

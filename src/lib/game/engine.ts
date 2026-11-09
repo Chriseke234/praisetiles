@@ -500,6 +500,10 @@ export class GameEngine {
       notesHit: this.notesHitCount,
       instrument: this.instrument,
       isPartial: true,
+      perfectCount: this.scoreState.perfectCount,
+      greatCount: this.scoreState.greatCount,
+      goodCount: this.scoreState.goodCount,
+      missCount: this.scoreState.missCount,
     };
 
     this.callbacks.onRunFailed(result);
@@ -525,6 +529,10 @@ export class GameEngine {
       notesHit: this.notesHitCount,
       instrument: this.instrument,
       isPartial: false,
+      perfectCount: this.scoreState.perfectCount,
+      greatCount: this.scoreState.greatCount,
+      goodCount: this.scoreState.goodCount,
+      missCount: this.scoreState.missCount,
     };
 
     this.callbacks.onRunCompleted(result);

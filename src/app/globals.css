@@ -50,6 +50,55 @@ body {
   text-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
 }
 
+.text-glow-purple {
+  text-shadow: 0 0 14px rgba(168, 85, 247, 0.7);
+}
+
+/* Subtle dotted/halftone background pattern inspired by gaming reference */
+.bg-halftone-dots {
+  background-image: radial-gradient(rgba(168, 85, 247, 0.18) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+.bg-halftone-dots-gold {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.18) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+/* Vinyl rotation animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-spin-record {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Vinyl groove realistic radial texture */
+.vinyl-grooves {
+  background: radial-gradient(
+    circle,
+    #171324 0%,
+    #0c0a14 38%,
+    #1c182c 42%,
+    #090710 50%,
+    #1c182c 58%,
+    #0c0a14 68%,
+    #1f1a30 76%,
+    #07060d 88%,
+    #13101f 100%
+  );
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   * {

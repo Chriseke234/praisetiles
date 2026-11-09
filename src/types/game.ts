@@ -74,6 +74,10 @@ export interface RunResult {
   notesHit: number;
   instrument: InstrumentType;
   isPartial: boolean;
+  perfectCount?: number;
+  greatCount?: number;
+  goodCount?: number;
+  missCount?: number;
 }
 
 export interface AudioValidationResult {

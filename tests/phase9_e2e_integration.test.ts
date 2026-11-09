@@ -54,21 +54,21 @@ describe('Phase 9 — Journey A: Guest Solo Play', () => {
   });
 
   it('enforces strict failure: timing windows evaluate to Perfect, Great, Good, or Miss (null)', () => {
-    // Perfect: within ±50ms
-    expect(getTimingJudgement(0.030)).toBe('PERFECT');
-    expect(getTimingJudgement(-0.045)).toBe('PERFECT');
+    // Perfect: within ±100ms
+    expect(getTimingJudgement(0.080)).toBe('PERFECT');
+    expect(getTimingJudgement(-0.095)).toBe('PERFECT');
 
-    // Great: within ±100ms
-    expect(getTimingJudgement(0.080)).toBe('GREAT');
-    expect(getTimingJudgement(-0.095)).toBe('GREAT');
+    // Great: within ±220ms
+    expect(getTimingJudgement(0.130)).toBe('GREAT');
+    expect(getTimingJudgement(-0.200)).toBe('GREAT');
 
-    // Good: within ±150ms
-    expect(getTimingJudgement(0.130)).toBe('GOOD');
-    expect(getTimingJudgement(-0.145)).toBe('GOOD');
+    // Good: within ±350ms
+    expect(getTimingJudgement(0.250)).toBe('GOOD');
+    expect(getTimingJudgement(-0.340)).toBe('GOOD');
 
-    // Miss: outside ±150ms returns null
-    expect(getTimingJudgement(0.160)).toBeNull();
-    expect(getTimingJudgement(-0.200)).toBeNull();
+    // Miss: outside ±350ms returns null
+    expect(getTimingJudgement(0.360)).toBeNull();
+    expect(getTimingJudgement(-0.400)).toBeNull();
   });
 
   it('calculates score, accuracy and combo scaling accurately', () => {

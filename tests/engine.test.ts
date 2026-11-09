@@ -62,15 +62,26 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     expect(scoreState.runAccuracy).toBe(100.0);
   });
 
-  it('STRICT FAILURE: Incorrect tap immediately ends run', () => {
+  it('3-STRIKE FAILURE: 3 incorrect taps deplete shields and end run', () => {
     const { callbacks, failedMock } = createCallbacks();
     const engine = new GameEngine(mockMap, 'piano', callbacks);
     engine.start();
 
-    // At 1.0s, user taps lane 0 (note is at 2.0s, 1.0s away -> outside 150ms window)
+    // At 1.0s, user taps lane 0 (note is at 2.0s -> outside window)
     engine.update(1.0);
     engine.handleLaneInput(0);
+    expect(failedMock).not.toHaveBeenCalled();
+    expect(engine.getScoreState().shieldsRemaining).toBe(2);
 
+    // Second incorrect tap (advance clock past 30ms debounce)
+    engine.update(1.05);
+    engine.handleLaneInput(0);
+    expect(failedMock).not.toHaveBeenCalled();
+    expect(engine.getScoreState().shieldsRemaining).toBe(1);
+
+    // Third incorrect tap - shields depleted -> fails run
+    engine.update(1.10);
+    engine.handleLaneInput(0);
     expect(failedMock).toHaveBeenCalledTimes(1);
     const result: RunResult = failedMock.mock.calls[0][0];
     expect(result.completed).toBe(false);
@@ -79,18 +90,28 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     expect(result.score).toBe(0);
   });
 
-  it('STRICT FAILURE: Missed note immediately ends run', () => {
+  it('3-STRIKE FAILURE: Missed notes deplete shields and end run when exhausted', () => {
     const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
     const engine = new GameEngine(mockMap, 'guitar', callbacks);
     engine.start();
 
-    // Note 0 is at 2.0s. Clock advances past 2.16s (> 2.0 + 0.150s)
+    // Note 0 is at 2.0s (lane 0). Clock advances past 2.36s (> 2.0 + 0.350s)
     engine.update(1.9);
     expect(failedMock).not.toHaveBeenCalled();
 
-    engine.update(2.16); // Note is missed!
-    expect(failedMock).toHaveBeenCalledTimes(1);
+    engine.update(2.40); // Note 0 is missed! (Shields: 2)
+    expect(failedMock).not.toHaveBeenCalled();
     expect(noteJudgedMock).toHaveBeenCalledWith('n-0', 'MISS', 0);
+    expect(engine.getScoreState().shieldsRemaining).toBe(2);
+
+    engine.update(3.40); // Note 1 is missed! (lane 1, Shields: 1)
+    expect(failedMock).not.toHaveBeenCalled();
+    expect(noteJudgedMock).toHaveBeenCalledWith('n-1', 'MISS', 1);
+    expect(engine.getScoreState().shieldsRemaining).toBe(1);
+
+    engine.update(4.40); // Note 2 is missed! (lane 2, Shields: 0) -> Failure
+    expect(failedMock).toHaveBeenCalledTimes(1);
+    expect(noteJudgedMock).toHaveBeenCalledWith('n-2', 'MISS', 2);
 
     const result: RunResult = failedMock.mock.calls[0][0];
     expect(result.completed).toBe(false);
@@ -133,8 +154,12 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     const engine = new GameEngine(mockMap, 'piano', callbacks);
     engine.start();
 
-    // Fail immediately
+    // Deplete all 3 shields
     engine.update(1.0);
+    engine.handleLaneInput(3);
+    engine.update(1.05);
+    engine.handleLaneInput(3);
+    engine.update(1.10);
     engine.handleLaneInput(3);
     expect(failedMock).toHaveBeenCalledTimes(1);
 
@@ -143,6 +168,7 @@ describe('GameEngine & Strict Failure Mechanics', () => {
     expect(engine.getScoreState().score).toBe(0);
     expect(engine.getScoreState().combo).toBe(0);
     expect(engine.getScoreState().maxCombo).toBe(0);
+    expect(engine.getScoreState().shieldsRemaining).toBe(3);
     expect(engine.getNotes().every((n) => !n.hit)).toBe(true);
 
     // Start new run and succeed

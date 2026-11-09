@@ -26,10 +26,10 @@ describe('Phase 8: GDD Core Gameplay Rules Reconciliation', () => {
   });
 
   it('aligns provisional timing windows with GDD Section 4', () => {
-    // GDD specifies: Perfect ±50ms; Great ±100ms; Good ±150ms
-    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.PERFECT_SEC).toBe(0.050);
-    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.GREAT_SEC).toBe(0.100);
-    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC).toBe(0.150);
+    // Generous touch timing windows: Perfect ±100ms; Great ±220ms; Good ±350ms
+    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.PERFECT_SEC).toBe(0.100);
+    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.GREAT_SEC).toBe(0.220);
+    expect(GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC).toBe(0.350);
   });
 
   it('aligns base scoring and accuracy weights with GDD Section 4', () => {

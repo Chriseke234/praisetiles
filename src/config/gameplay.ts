@@ -27,11 +27,17 @@ export const GAMEPLAY_CONFIG = {
   },
 
   // Timing Windows (in seconds)
-  // Provisional windows from GDD: Perfect ±50ms; Great ±100ms; Good ±150ms
+  // Generous arcade windows: Perfect ±100ms; Great ±220ms; Good ±350ms
   TIMING_WINDOWS: {
-    PERFECT_SEC: 0.050, // ±50ms
-    GREAT_SEC: 0.100,   // ±100ms
-    GOOD_SEC: 0.150,    // ±150ms
+    PERFECT_SEC: 0.100, // ±100ms
+    GREAT_SEC: 0.220,   // ±220ms
+    GOOD_SEC: 0.350,    // ±350ms
+  },
+
+  // Player Shield / Health System (3 Strikes)
+  LIVES: {
+    MAX_SHIELDS: 3,
+    STARTING_SHIELDS: 3,
   },
 
   // Base Points per Hit Grade (Arcade Standard: 100 / 75 / 50)
@@ -76,13 +82,13 @@ export const GAMEPLAY_CONFIG = {
 
   // Visual & Fall timing
   // Time ahead of hit point that notes become visible and start falling down lane
-  APPROACH_TIME_SECONDS: 1.8, // 1.8s for smooth readable approach on both mobile & desktop
+  APPROACH_TIME_SECONDS: 2.2, // 2.2s for relaxed, readable, musical approach
 
   // Dynamic approach times based on song progression and energy
   DYNAMIC_APPROACH_TIMES: {
-    STAR_1: 1.8,  // Star 1 (0-33%): Calm / introductory approach
-    STAR_2: 1.45, // Star 2 (33-66%): Accelerated moderate pace
-    STAR_3: 1.15, // Star 3 (66-100%): High-energy arcade climax
+    STAR_1: 2.2,  // Star 1 (0-33%): Calm, accessible entry
+    STAR_2: 1.85, // Star 2 (33-66%): Steady rhythmic groove
+    STAR_3: 1.55, // Star 3 (66-100%): Lively arcade pace, comfortable to read and tap
   },
 
   // Long (Sustained) Tile Mechanics

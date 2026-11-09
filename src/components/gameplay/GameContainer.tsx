@@ -16,7 +16,7 @@ import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { MilestoneProgressBar } from './MilestoneProgressBar';
 import { AtmosphericBackground } from './AtmosphericBackground';
-import { Volume2, VolumeX, ArrowLeft, Sliders, RotateCcw, Award } from 'lucide-react';
+import { Volume2, VolumeX, ArrowLeft, Sliders, RotateCcw, Award, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 interface GameContainerProps {
@@ -179,6 +179,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     }
   }, []);
 
+  const handleLanePointerDown = useCallback((lane: number) => {
+    if (isWaitingForStart) {
+      handleStartGame();
+      return;
+    }
+    if (engineRef.current) {
+      engineRef.current.handleLaneInput(lane);
+    }
+  }, [isWaitingForStart, handleStartGame]);
+
   const handlePointerLeaveArea = useCallback(() => {
     if (engineRef.current) {
       engineRef.current.handlePointerCancel();
@@ -263,6 +273,26 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         <div className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] mt-1">
           {scoreState.score.toLocaleString()}
         </div>
+
+        {/* 3 Shields / Lives Indicator */}
+        <div className="flex items-center gap-1.5 mt-1">
+          {[1, 2, 3].map((num) => {
+            const hasShield = (scoreState.shieldsRemaining ?? 3) >= num;
+            return (
+              <div
+                key={num}
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                  hasShield
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-400/80 shadow-[0_0_10px_rgba(251,191,36,0.6)]'
+                    : 'bg-gray-800/40 text-gray-600 border border-gray-700/40 scale-90'
+                }`}
+                title={`Shield ${num}`}
+              >
+                <Shield className="w-3.5 h-3.5 fill-current" />
+              </div>
+            );
+          })}
+        </div>
       </header>
 
       {/* Latency Calibration Popup */}
@@ -308,6 +338,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             activeLanes={activeLanes}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
+            onLanePointerDown={handleLanePointerDown}
             onPointerLeaveArea={handlePointerLeaveArea}
             reducedMotion={reducedMotion}
             isWaitingForStart={isWaitingForStart}
@@ -324,6 +355,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             activeLanes={activeLanes}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
+            onLanePointerDown={handleLanePointerDown}
             onPointerLeaveArea={handlePointerLeaveArea}
             reducedMotion={reducedMotion}
           />

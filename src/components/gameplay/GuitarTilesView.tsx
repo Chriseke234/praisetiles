@@ -13,6 +13,8 @@ interface GuitarTilesViewProps {
   onTilePointerDown: (noteId: string, lane: number) => void;
   /** Called when the player releases a falling tile */
   onTilePointerUp: (noteId: string, lane: number) => void;
+  /** Called when player taps anywhere on a lane (buffer tap) */
+  onLanePointerDown?: (lane: number) => void;
   /** Called when pointer leaves the game area (cancel all sustains) */
   onPointerLeaveArea: () => void;
   reducedMotion: boolean;
@@ -25,6 +27,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
   activeLanes,
   onTilePointerDown,
   onTilePointerUp,
+  onLanePointerDown,
   onPointerLeaveArea,
   reducedMotion,
 }) => {
@@ -60,13 +63,16 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
         {/* Hit Bar at 88% */}
         <div className="absolute top-[88%] left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500/70 via-yellow-300 to-amber-500/70 z-10 shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
 
-        {/* 4 Guitar Lanes — Visual strings. Direct tapping anywhere on falling fret tiles scores. */}
+        {/* 4 Guitar Lanes — Visual strings & interactive touch targets */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
             <div
               key={lane}
-              className={`relative h-full flex flex-col justify-end pointer-events-none transition-colors duration-75 ${
+              onPointerDown={() => {
+                onLanePointerDown?.(lane);
+              }}
+              className={`relative h-full flex flex-col justify-end cursor-pointer transition-colors duration-75 ${
                 isActive
                   ? 'bg-amber-500/25'
                   : ''
@@ -208,18 +214,19 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                // Do NOT call setPointerCapture on short tiles: instantaneous scoring
+                // Instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              className="px-2 z-20 cursor-pointer h-14 sm:h-16"
+              className="px-2 z-20 cursor-pointer h-28 sm:h-36"
             >
               <div
-                className="w-full h-full rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative overflow-hidden shadow-lg pointer-events-none"
+                className="w-full h-full rounded-2xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_4px_20px_rgba(250,204,21,0.5)] pointer-events-none"
               >
                 {/* Center pearl inlay */}
-                <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
+                <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none mb-1">
                   <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
                 </div>
+                <div className="w-1/2 h-1 bg-yellow-200/60 rounded-full pointer-events-none" />
               </div>
             </div>
           );

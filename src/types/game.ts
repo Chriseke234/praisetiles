@@ -60,6 +60,7 @@ export interface ScoreState {
   missCount: number;
   runAccuracy: number; // 0.0 to 100.0%
   totalEncountered: number;
+  shieldsRemaining?: number;
 }
 
 export interface RunResult {

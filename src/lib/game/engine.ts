@@ -205,7 +205,6 @@ export class GameEngine {
     for (let i = 0; i < this.notes.length; i++) {
       const note = this.notes[i];
       if (!note.hit && note.time + goodWindow < currentTime) {
-        // STRICT FAILURE RULE: One missed note immediately ends the player's run
         note.hit = true;
         note.grade = 'MISS';
         if (note.type === 'long') {
@@ -214,8 +213,12 @@ export class GameEngine {
         this.scoreState = applyMissToScoreState(this.scoreState);
         this.callbacks.onScoreUpdate(this.scoreState);
         this.callbacks.onNoteJudged(note.id, 'MISS', note.lane);
-        this.handleFailure('MISSED_NOTE');
-        return;
+
+        // 3-Strike Life System: Fail only if all shields are lost
+        if ((this.scoreState.shieldsRemaining ?? 0) <= 0) {
+          this.handleFailure('MISSED_NOTE');
+          return;
+        }
       }
     }
 
@@ -476,8 +479,12 @@ export class GameEngine {
       return;
     }
 
-    // STRICT FAILURE RULE: Incorrect tap immediately ends the player's run!
-    this.handleFailure('INCORRECT_TAP');
+    // Leniency: Empty lane tap breaks combo and consumes 1 shield (fails only on 0 shields)
+    this.scoreState = applyMissToScoreState(this.scoreState);
+    this.callbacks.onScoreUpdate(this.scoreState);
+    if ((this.scoreState.shieldsRemaining ?? 0) <= 0) {
+      this.handleFailure('INCORRECT_TAP');
+    }
   }
 
   /**

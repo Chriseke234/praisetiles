@@ -79,6 +79,7 @@ export function createInitialScoreState(): ScoreState {
     missCount: 0,
     runAccuracy: 100.0,
     totalEncountered: 0,
+    shieldsRemaining: GAMEPLAY_CONFIG.LIVES.STARTING_SHIELDS,
   };
 }
 
@@ -109,6 +110,7 @@ export function applyHitToScoreState(current: ScoreState, grade: Exclude<HitGrad
     goodCount,
     runAccuracy,
     totalEncountered,
+    shieldsRemaining: current.shieldsRemaining ?? GAMEPLAY_CONFIG.LIVES.STARTING_SHIELDS,
   };
 }
 
@@ -118,6 +120,8 @@ export function applyHitToScoreState(current: ScoreState, grade: Exclude<HitGrad
 export function applyMissToScoreState(current: ScoreState): ScoreState {
   const totalEncountered = current.totalEncountered + 1;
   const missCount = current.missCount + 1;
+  const currentShields = current.shieldsRemaining ?? GAMEPLAY_CONFIG.LIVES.STARTING_SHIELDS;
+  const shieldsRemaining = Math.max(0, currentShields - 1);
   const runAccuracy = calculateAccuracy(
     current.perfectCount,
     current.greatCount,
@@ -131,6 +135,7 @@ export function applyMissToScoreState(current: ScoreState): ScoreState {
     missCount,
     runAccuracy,
     totalEncountered,
+    shieldsRemaining,
   };
 }
 

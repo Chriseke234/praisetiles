@@ -149,13 +149,60 @@ describe('Interactive Rhythm Gameplay Upgrade', () => {
       engine.handleDirectTileDown('lane-2', 2);
       expect(noteJudgedMock).toHaveBeenCalledWith('lane-2', 'GREAT', 2);
 
-      // Lane 3 tap (late edge tap at +120ms -> GOOD)
-      engine.update(3.62);
+      // Lane 3 tap (late edge tap at +250ms -> GOOD)
+      engine.update(3.75);
       engine.handleDirectTileDown('lane-3', 3);
       expect(noteJudgedMock).toHaveBeenCalledWith('lane-3', 'GOOD', 3);
 
       expect(failedMock).not.toHaveBeenCalled();
       expect(engine.getScoreState().combo).toBe(4);
+    });
+
+    it('3-STRIKE SHIELD SYSTEM: survives 1st and 2nd miss and only fails when all 3 shields deplete', () => {
+      const shieldMap: RhythmMap = {
+        version: '2.0.0',
+        audioFingerprint: 'shield-test',
+        songTitle: 'Shield Test Hymn',
+        duration: 30.0,
+        totalNotes: 4,
+        notes: [
+          { id: 'm-0', lane: 0, time: 1.0, hit: false, type: 'short' },
+          { id: 'm-1', lane: 1, time: 2.0, hit: false, type: 'short' },
+          { id: 'm-2', lane: 2, time: 3.0, hit: false, type: 'short' },
+          { id: 'm-3', lane: 3, time: 4.0, hit: false, type: 'short' },
+        ],
+        stages: { star1End: 10, star2End: 20, star3End: 30 },
+      };
+
+      const { callbacks, failedMock, noteJudgedMock } = createCallbacks();
+      const engine = new GameEngine(shieldMap, 'piano', callbacks);
+      engine.start();
+
+      expect(engine.getScoreState().shieldsRemaining).toBe(3);
+
+      // Miss 1 at 1.4s (passes 1.0s + 0.35s goodWindow)
+      engine.update(1.4);
+      expect(noteJudgedMock).toHaveBeenCalledWith('m-0', 'MISS', 0);
+      expect(failedMock).not.toHaveBeenCalled();
+      expect(engine.getScoreState().shieldsRemaining).toBe(2);
+
+      // Hit note 2 successfully
+      engine.update(2.0);
+      engine.handleDirectTileDown('m-1', 1);
+      expect(noteJudgedMock).toHaveBeenCalledWith('m-1', 'PERFECT', 1);
+      expect(failedMock).not.toHaveBeenCalled();
+
+      // Miss 2 at 3.4s
+      engine.update(3.4);
+      expect(noteJudgedMock).toHaveBeenCalledWith('m-2', 'MISS', 2);
+      expect(failedMock).not.toHaveBeenCalled();
+      expect(engine.getScoreState().shieldsRemaining).toBe(1);
+
+      // Miss 3 at 4.4s (3rd strike -> fails run)
+      engine.update(4.4);
+      expect(noteJudgedMock).toHaveBeenCalledWith('m-3', 'MISS', 3);
+      expect(failedMock).toHaveBeenCalled();
+      expect(engine.getScoreState().shieldsRemaining).toBe(0);
     });
 
     it('RAPID CONSECUTIVE TAPS: handles rapid taps without duplicate scoring or state desync', () => {

@@ -11,31 +11,33 @@ import {
 
 describe('Scoring & Judgement Engine', () => {
   describe('getTimingJudgement', () => {
-    it('awards PERFECT for timing error within ±50ms', () => {
+    it('awards PERFECT for timing error within ±100ms', () => {
       expect(getTimingJudgement(0.000)).toBe('PERFECT');
       expect(getTimingJudgement(0.025)).toBe('PERFECT');
       expect(getTimingJudgement(-0.049)).toBe('PERFECT');
       expect(getTimingJudgement(0.050)).toBe('PERFECT');
       expect(getTimingJudgement(-0.050)).toBe('PERFECT');
+      expect(getTimingJudgement(0.099)).toBe('PERFECT');
+      expect(getTimingJudgement(-0.100)).toBe('PERFECT');
     });
 
-    it('awards GREAT for timing error between 50ms and 100ms', () => {
-      expect(getTimingJudgement(0.051)).toBe('GREAT');
-      expect(getTimingJudgement(-0.075)).toBe('GREAT');
-      expect(getTimingJudgement(0.100)).toBe('GREAT');
-      expect(getTimingJudgement(-0.100)).toBe('GREAT');
+    it('awards GREAT for timing error between 100ms and 220ms', () => {
+      expect(getTimingJudgement(0.101)).toBe('GREAT');
+      expect(getTimingJudgement(-0.150)).toBe('GREAT');
+      expect(getTimingJudgement(0.220)).toBe('GREAT');
+      expect(getTimingJudgement(-0.220)).toBe('GREAT');
     });
 
-    it('awards GOOD for timing error between 100ms and 150ms', () => {
-      expect(getTimingJudgement(0.101)).toBe('GOOD');
-      expect(getTimingJudgement(-0.125)).toBe('GOOD');
-      expect(getTimingJudgement(0.150)).toBe('GOOD');
-      expect(getTimingJudgement(-0.150)).toBe('GOOD');
+    it('awards GOOD for timing error between 220ms and 350ms', () => {
+      expect(getTimingJudgement(0.221)).toBe('GOOD');
+      expect(getTimingJudgement(-0.300)).toBe('GOOD');
+      expect(getTimingJudgement(0.350)).toBe('GOOD');
+      expect(getTimingJudgement(-0.350)).toBe('GOOD');
     });
 
-    it('returns null for timing errors exceeding ±150ms', () => {
-      expect(getTimingJudgement(0.151)).toBeNull();
-      expect(getTimingJudgement(-0.200)).toBeNull();
+    it('returns null for timing errors exceeding ±350ms', () => {
+      expect(getTimingJudgement(0.351)).toBeNull();
+      expect(getTimingJudgement(-0.400)).toBeNull();
       expect(getTimingJudgement(1.0)).toBeNull();
     });
   });

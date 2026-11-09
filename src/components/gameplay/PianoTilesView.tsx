@@ -14,6 +14,8 @@ interface PianoTilesViewProps {
   onTilePointerDown: (noteId: string, lane: number) => void;
   /** Called when the player releases a falling tile */
   onTilePointerUp: (noteId: string, lane: number) => void;
+  /** Called when player taps anywhere on a lane (buffer tap) */
+  onLanePointerDown?: (lane: number) => void;
   /** Called when pointer leaves the game area (cancel all sustains) */
   onPointerLeaveArea: () => void;
   reducedMotion: boolean;
@@ -31,6 +33,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
   activeLanes,
   onTilePointerDown,
   onTilePointerUp,
+  onLanePointerDown,
   onPointerLeaveArea,
   reducedMotion,
   isWaitingForStart = false,
@@ -73,13 +76,16 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
         {/* Hit line receptor guide at 88% from top */}
         <div className="absolute top-[88%] left-0 right-0 h-1 bg-gradient-to-r from-purple-500/30 via-amber-400/80 to-purple-500/30 z-10 shadow-[0_0_15px_rgba(251,191,36,0.6)]" />
 
-        {/* 4 Vertical Lanes — Visual tracks */}
+        {/* 4 Vertical Lanes — Visual tracks & Interactive Tap Buffers */}
         {[0, 1, 2, 3].map((lane) => {
           const isActive = activeLanes[lane];
           return (
             <div
               key={lane}
-              className={`relative h-full flex flex-col justify-end pointer-events-none transition-colors duration-75 ${
+              onPointerDown={() => {
+                onLanePointerDown?.(lane);
+              }}
+              className={`relative h-full flex flex-col justify-end cursor-pointer transition-colors duration-75 ${
                 isActive ? 'bg-amber-400/15' : ''
               }`}
             >
@@ -268,18 +274,19 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                // Do NOT call setPointerCapture on short tiles: instantaneous scoring
+                // Instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              className="px-1 z-20 cursor-pointer h-16 sm:h-20"
+              className="px-1 z-20 cursor-pointer h-28 sm:h-36"
             >
               <div
-                className="w-full h-full rounded-xl border border-purple-400/40 bg-gradient-to-b from-[#221344] via-[#140b29] to-[#090414] shadow-[0_4px_15px_rgba(0,0,0,0.8)] flex items-center justify-center relative overflow-hidden pointer-events-none"
+                className="w-full h-full rounded-2xl border-2 border-amber-400/90 bg-gradient-to-b from-[#2d1659] via-[#160c2e] to-[#080413] shadow-[0_4px_25px_rgba(251,191,36,0.4)] flex flex-col items-center justify-center relative overflow-hidden pointer-events-none"
               >
                 {/* Surface Sheen */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-                {/* Central Soft Ambient Glow */}
-                <div className="w-1/3 h-1 bg-purple-300/60 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.8)] pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none" />
+                {/* Central Radiant Golden Rhythm Pill */}
+                <div className="w-1/2 h-2.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-purple-400 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] pointer-events-none mb-1" />
+                <div className="w-1/4 h-1 bg-amber-400/50 rounded-full pointer-events-none" />
               </div>
             </div>
           );

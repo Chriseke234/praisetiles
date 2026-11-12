@@ -16,6 +16,16 @@ describe('Streaming Music Integration Engine', () => {
       expect(extractYouTubeVideoId(url)).toBe('n4XWfwLHeLM');
     });
 
+    it('correctly extracts ID from youtube shorts URL', () => {
+      const url = 'https://www.youtube.com/shorts/KwX1f2gYKZ4';
+      expect(extractYouTubeVideoId(url)).toBe('KwX1f2gYKZ4');
+    });
+
+    it('correctly extracts ID from youtube live URL', () => {
+      const url = 'https://www.youtube.com/live/dQw4w9WgXcQ?feature=share';
+      expect(extractYouTubeVideoId(url)).toBe('dQw4w9WgXcQ');
+    });
+
     it('correctly extracts ID from music.youtube.com URL', () => {
       const url = 'https://music.youtube.com/watch?v=dQw4w9WgXcQ';
       expect(extractYouTubeVideoId(url)).toBe('dQw4w9WgXcQ');
@@ -121,6 +131,81 @@ describe('Streaming Music Integration Engine', () => {
       player.stop();
       expect(player.getCurrentTime()).toBe(0);
       expect(player.getIsPlaying()).toBe(false);
+    });
+  });
+
+  describe('Audio Stream Proxy API (/api/music/proxy)', () => {
+    it('rejects missing url parameter with 400', async () => {
+      const { GET } = await import('@/app/api/music/proxy/route');
+      const req = new Request('http://localhost:3000/api/music/proxy');
+      const res = await GET(req as any);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/missing "url"/i);
+    });
+
+    it('rejects invalid or non-HTTP protocols with 400', async () => {
+      const { GET } = await import('@/app/api/music/proxy/route');
+      const req = new Request('http://localhost:3000/api/music/proxy?url=ftp://evil.com/audio.mp3');
+      const res = await GET(req as any);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/protocol/i);
+    });
+
+    it('rejects internal IP addresses (SSRF guard) with 403', async () => {
+      const { GET } = await import('@/app/api/music/proxy/route');
+      const testCases = [
+        'http://127.0.0.1:8080/audio.mp3',
+        'http://localhost:3000/api/secret',
+        'http://169.254.169.254/latest/meta-data',
+        'http://192.168.1.1/stream.m4a',
+        'http://10.0.0.1/audio.wav',
+      ];
+
+      for (const target of testCases) {
+        const req = new Request(`http://localhost:3000/api/music/proxy?url=${encodeURIComponent(target)}`);
+        const res = await GET(req as any);
+        expect(res.status).toBe(403);
+        const json = await res.json();
+        expect(json.error).toMatch(/restricted|internal/i);
+      }
+    });
+
+    it('returns permissive CORS preflight headers on OPTIONS', async () => {
+      const { OPTIONS } = await import('@/app/api/music/proxy/route');
+      const res = await OPTIONS();
+      expect(res.status).toBe(204);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(res.headers.get('Access-Control-Allow-Methods')).toContain('GET');
+    });
+  });
+
+  describe('YouTube API Resolution (/api/music/youtube)', () => {
+    it('returns success: true and track object for direct video ID or URL', async () => {
+      const { GET } = await import('@/app/api/music/youtube/route');
+      const req = new Request('http://localhost:3000/api/music/youtube?url=https://www.youtube.com/watch?v=KwX1f2gYKZ4');
+      const res = await GET(req as any);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+
+      expect(json.success).toBe(true);
+      expect(json.videoId).toBe('KwX1f2gYKZ4');
+      expect(json.title).toBeDefined();
+      expect(json.author).toBeDefined();
+      expect(json.thumbnailUrl).toContain('KwX1f2gYKZ4');
+      expect(json.track).toBeDefined();
+      expect(json.track.videoId).toBe('KwX1f2gYKZ4');
+    });
+
+    it('rejects empty query with 400', async () => {
+      const { GET } = await import('@/app/api/music/youtube/route');
+      const req = new Request('http://localhost:3000/api/music/youtube');
+      const res = await GET(req as any);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error).toMatch(/missing/i);
     });
   });
 });

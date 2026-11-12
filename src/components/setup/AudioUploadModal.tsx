@@ -104,6 +104,7 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
   const [youtubeInput, setYoutubeInput] = useState('');
   const [isResolvingYouTube, setIsResolvingYouTube] = useState(false);
   const [detectedYouTube, setDetectedYouTube] = useState<YouTubeVideoData | null>(null);
+  const [youTubeSuggestions, setYouTubeSuggestions] = useState<YouTubeVideoData[]>([]);
 
   // Tab 3: Upload State
   const [dragActive, setDragActive] = useState(false);
@@ -164,10 +165,30 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
     }
 
     stopAudition();
-    const audio = new Audio(track.previewUrl);
+    // Route through audio proxy to bypass cross-origin restrictions
+    const streamUrl = track.previewUrl.startsWith('http')
+      ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
+      : track.previewUrl;
+
+    const audio = new Audio(streamUrl);
     audio.volume = 0.7;
     audio.onended = () => setAuditionTrackId(null);
     audio.onerror = () => {
+      // Secondary fallback to direct URL
+      if (audio.src !== track.previewUrl) {
+        const directAudio = new Audio(track.previewUrl);
+        directAudio.volume = 0.7;
+        directAudio.onended = () => setAuditionTrackId(null);
+        directAudio.onerror = () => {
+          setErrorMessage('Audio preview unavailable for this track.');
+          setAuditionTrackId(null);
+        };
+        directAudio.play().catch(() => {
+          setErrorMessage('Autoplay blocked. Tap play again.');
+        });
+        auditionAudioRef.current = directAudio;
+        return;
+      }
       setErrorMessage('Audio preview unavailable for this track.');
       setAuditionTrackId(null);
     };
@@ -189,9 +210,27 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
       const ctx = await audioPlayer.ensureContext();
       setProcessingStatus('Fetching audio stream...');
 
-      const response = await fetch(track.previewUrl);
+      // Proxy via backend to prevent browser CORS blocks ("Failed to fetch")
+      const proxyUrl = track.previewUrl.startsWith('http')
+        ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
+        : track.previewUrl;
+
+      let response: Response | null = null;
+      try {
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          response = res;
+        }
+      } catch {
+        // Fallback to direct fetch
+      }
+
+      if (!response || !response.ok) {
+        response = await fetch(track.previewUrl);
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to download preview audio stream.');
+        throw new Error('Failed to download preview audio stream from music catalog.');
       }
 
       setProcessingStatus('Decoding audio data for rhythm analysis...');
@@ -214,7 +253,11 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
       }
     } catch (err: any) {
       setIsProcessing(false);
-      setErrorMessage(err.message || 'Error processing streaming audio track.');
+      setErrorMessage(
+        err.message?.includes('Failed to fetch')
+          ? 'Network error: Unable to fetch audio stream. Please check your internet connection or try another song.'
+          : err.message || 'Error processing streaming audio track.'
+      );
     }
   };
 
@@ -228,17 +271,41 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
       const res = await fetch(`/api/music/youtube?url=${encodeURIComponent(inputQuery)}`);
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
+      if (!res.ok || (!data.success && !data.track && !data.videoId)) {
         throw new Error(data.error || 'Failed to resolve YouTube video.');
       }
 
+      const videoId = data.videoId || data.track?.videoId;
+      const title = data.title || data.track?.title || 'YouTube Gospel Track';
+      const author = data.author || data.track?.author || 'YouTube';
+      const thumbnailUrl =
+        data.thumbnailUrl ||
+        data.track?.thumbnailUrl ||
+        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      const durationSec = data.durationSec || data.track?.durationSec || 180;
+
+      if (!videoId) {
+        throw new Error(data.error || 'Could not find a valid YouTube video ID.');
+      }
+
       setDetectedYouTube({
-        videoId: data.videoId,
-        title: data.title,
-        author: data.author,
-        thumbnailUrl: data.thumbnailUrl,
-        durationSec: data.durationSec || 180,
+        videoId,
+        title,
+        author,
+        thumbnailUrl,
+        durationSec,
       });
+
+      if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        const formattedSuggestions: YouTubeVideoData[] = data.suggestions.map((s: any) => ({
+          videoId: s.videoId,
+          title: s.title,
+          author: s.author,
+          thumbnailUrl: s.thumbnailUrl || `https://img.youtube.com/vi/${s.videoId}/hqdefault.jpg`,
+          durationSec: s.durationSec || 180,
+        }));
+        setYouTubeSuggestions(formattedSuggestions);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Could not find YouTube track. Check the URL or search query.');
     } finally {
@@ -709,6 +776,50 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
                   <Play className="w-4 h-4 fill-white stroke-white" />
                   <span>Play on PraiseTiles</span>
                 </button>
+              </div>
+            )}
+
+            {/* Alternative Search Matches (if user searched by keywords) */}
+            {youTubeSuggestions.length > 1 && (
+              <div className="space-y-2 pt-2 animate-fadeIn text-left">
+                <span className="text-[11px] font-bold text-gray-400 block">
+                  Other Matching Tracks:
+                </span>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {youTubeSuggestions
+                    .filter((s) => s.videoId !== detectedYouTube?.videoId)
+                    .map((sug) => (
+                      <div
+                        key={sug.videoId}
+                        className="p-2.5 rounded-xl bg-gray-900/60 border border-gray-800 hover:border-red-500/40 flex items-center justify-between gap-3 transition"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={sug.thumbnailUrl}
+                            alt={sug.title}
+                            className="w-10 h-7 rounded object-cover shrink-0 border border-gray-800"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-white truncate max-w-[200px] sm:max-w-xs">
+                              {sug.title}
+                            </p>
+                            <p className="text-[10px] text-gray-400 truncate">{sug.author}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetectedYouTube(sug);
+                            setYoutubeInput(`https://www.youtube.com/watch?v=${sug.videoId}`);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-[11px] font-bold transition shrink-0"
+                        >
+                          Select
+                        </button>
+                      </div>
+                    ))}
+                </div>
               </div>
             )}
           </div>

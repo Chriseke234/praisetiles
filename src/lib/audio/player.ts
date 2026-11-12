@@ -23,15 +23,39 @@ export class GameAudioPlayer {
 
   /**
    * Initializes or resumes the AudioContext after user interaction.
+   * Hardened for Apple Safari on iPhone, iPad, and macOS:
+   * - Supports both window.AudioContext and webkitAudioContext
+   * - Resumes from both 'suspended' and iOS 'interrupted' states
+   * - Plays a 1-sample silent buffer to unlock the hardware audio pipeline
    */
   public async ensureContext(): Promise<AudioContext> {
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtx();
     }
-    if (this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+
+    const state = this.ctx.state as string;
+    if (state === 'suspended' || state === 'interrupted') {
+      try {
+        await this.ctx.resume();
+      } catch {
+        // Fallback for strict browser policies
+      }
     }
+
+    // iOS Safari audio unlock: play 1-sample zero-gain buffer on user gesture
+    try {
+      const unlockBuffer = this.ctx.createBuffer(1, 1, 22050);
+      const unlockSource = this.ctx.createBufferSource();
+      unlockSource.buffer = unlockBuffer;
+      unlockSource.connect(this.ctx.destination);
+      unlockSource.start(0);
+    } catch {
+      // Non-blocking
+    }
+
     return this.ctx;
   }
 

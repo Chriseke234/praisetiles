@@ -12,6 +12,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { GAMEPLAY_CONFIG } from '@/config/gameplay';
+import { safeLocalStorage } from '@/lib/storage/safeStorage';
 
 const STORAGE_KEY = 'praisetiles_key_bindings';
 const DEFAULT_KEYS = [...GAMEPLAY_CONFIG.LANES.DEFAULT_KEYS];
@@ -41,7 +42,7 @@ function isValidBindings(keys: string[]): boolean {
 function loadBindings(): string[] {
   if (typeof window === 'undefined') return [...DEFAULT_KEYS];
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeLocalStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (isValidBindings(parsed)) {
@@ -60,7 +61,7 @@ function loadBindings(): string[] {
 function saveBindings(keys: string[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+    safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
   } catch {
     // Storage full or unavailable — non-critical
   }

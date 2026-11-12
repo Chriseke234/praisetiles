@@ -24,7 +24,7 @@ import { RoomGameContainer } from './RoomGameContainer';
 import { MultiplayerResultScreen } from './MultiplayerResultScreen';
 import { RoomChat } from './RoomChat';
 import { GameAudioPlayer } from '@/lib/audio/player';
-import { validateAudioFile } from '@/lib/audio/validator';
+import { validateAudioFile, decodeAudioDataCompat } from '@/lib/audio/validator';
 import { generateRhythmMapFromAudio } from '@/lib/audio/analyzer';
 import { generateSyntheticGospelTrack } from '@/lib/audio/synth';
 import { RhythmMap, RunResult, InstrumentType } from '@/types/game';
@@ -145,10 +145,13 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({ inviteCode, onLeave }) => 
     }
 
     try {
-      // Decode audio
+      // Decode audio with Safari-safe AudioContext and decoder
       const arrayBuf = await file.arrayBuffer();
-      const audioCtx = new AudioContext();
-      const decoded  = await audioCtx.decodeAudioData(arrayBuf);
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const decoded  = await decodeAudioDataCompat(audioCtx, arrayBuf);
       audioCtx.close();
 
       // Generate rhythm map

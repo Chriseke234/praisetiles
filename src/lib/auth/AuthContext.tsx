@@ -15,6 +15,7 @@ import {
   calculateLevelFromXp,
 } from '@/config/progression';
 import { updateChallengesOnMatch, evaluateAchievements } from '@/lib/progression/challenges';
+import { safeSessionStorage } from '@/lib/storage/safeStorage';
 
 interface AuthContextType {
   user: { id: string; email?: string } | null;
@@ -54,11 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
   const [stats, setStats] = useState<PlayerStats | null>(null);
 
-  // Initialize guest matches lazily from sessionStorage
+  // Initialize guest matches lazily from safeSessionStorage (Safari safe)
   const [guestMatches, setGuestMatches] = useState<MatchRecord[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
-      const stored = sessionStorage.getItem(GUEST_STORAGE_KEY);
+      const stored = safeSessionStorage.getItem(GUEST_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) return parsed;
@@ -163,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await fetchUserData(session.user.id);
         // Check if there are guest matches from current session to transfer
         try {
-          const stored = sessionStorage.getItem(GUEST_STORAGE_KEY);
+          const stored = safeSessionStorage.getItem(GUEST_STORAGE_KEY);
           if (stored) {
             const matches: MatchRecord[] = JSON.parse(stored);
             if (matches.length > 0) {
@@ -285,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = [matchRecord, ...guestMatches].slice(0, 50); // keep last 50 matches
     setGuestMatches(updated);
     try {
-      sessionStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
+      safeSessionStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
     } catch {
       // ignore
     }
@@ -398,7 +399,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Clear guest session storage
-      sessionStorage.removeItem(GUEST_STORAGE_KEY);
+      safeSessionStorage.removeItem(GUEST_STORAGE_KEY);
       setGuestMatches([]);
       setPendingTransferMatches([]);
       await fetchUserData(user.id);
@@ -411,7 +412,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const dismissTransferPrompt = () => {
     setPendingTransferMatches([]);
-    sessionStorage.removeItem(GUEST_STORAGE_KEY);
+    safeSessionStorage.removeItem(GUEST_STORAGE_KEY);
     setGuestMatches([]);
   };
 

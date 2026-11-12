@@ -5,6 +5,7 @@
 
 import { InstrumentType, RunResult } from '@/types/game';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { safeLocalStorage } from '@/lib/storage/safeStorage';
 
 export interface GhostSnapshot {
   time: number; // Audio time in seconds
@@ -53,11 +54,11 @@ export async function saveGhostRun(
     createdAt: new Date().toISOString(),
   };
 
-  // Local storage cache fallback
+  // Local storage cache fallback (Safari safe)
   try {
     if (typeof window !== 'undefined') {
       const key = `${LOCAL_STORAGE_GHOST_PREFIX}${songFingerprint}_${runResult.instrument}`;
-      localStorage.setItem(key, JSON.stringify(ghost));
+      safeLocalStorage.setItem(key, JSON.stringify(ghost));
     }
   } catch (err) {
     console.warn('[Ghost] Local storage save failed:', err);
@@ -130,11 +131,11 @@ export async function loadGhostRun(
     // Non-blocking fallback
   }
 
-  // Fallback to local storage
+  // Fallback to local storage (Safari safe)
   try {
     if (typeof window !== 'undefined') {
       const key = `${LOCAL_STORAGE_GHOST_PREFIX}${songFingerprint}_${instrument}`;
-      const saved = localStorage.getItem(key);
+      const saved = safeLocalStorage.getItem(key);
       if (saved) {
         return JSON.parse(saved) as GhostRun;
       }

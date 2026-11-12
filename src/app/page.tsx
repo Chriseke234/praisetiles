@@ -123,7 +123,7 @@ function PraiseTilesGame() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#090a0f] text-gray-100 flex flex-col justify-center">
+    <div className="min-h-[100dvh] w-full bg-[#090a0f] text-gray-100 flex flex-col justify-center">
       {view === 'MENU' && (
         <MainMenu
           onSelectInstrument={handleSelectInstrument}

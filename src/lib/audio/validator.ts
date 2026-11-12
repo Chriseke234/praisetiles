@@ -95,6 +95,57 @@ export function analyzeAudioBufferQuality(buffer: AudioBuffer): {
 }
 
 /**
+ * Safari-compatible decodeAudioData wrapper supporting both Promises
+ * and legacy callback-based WebKit implementations.
+ */
+export async function decodeAudioDataCompat(
+  audioContext: AudioContext,
+  arrayBuffer: ArrayBuffer
+): Promise<AudioBuffer> {
+  const cloned = arrayBuffer.slice(0);
+  return new Promise<AudioBuffer>((resolve, reject) => {
+    let settled = false;
+    try {
+      const promise = audioContext.decodeAudioData(
+        cloned,
+        (decoded) => {
+          if (!settled) {
+            settled = true;
+            resolve(decoded);
+          }
+        },
+        (err) => {
+          if (!settled) {
+            settled = true;
+            reject(err);
+          }
+        }
+      );
+      if (promise && typeof (promise as Promise<AudioBuffer>).then === 'function') {
+        (promise as Promise<AudioBuffer>)
+          .then((decoded) => {
+            if (!settled) {
+              settled = true;
+              resolve(decoded);
+            }
+          })
+          .catch((err) => {
+            if (!settled) {
+              settled = true;
+              reject(err);
+            }
+          });
+      }
+    } catch (err) {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    }
+  });
+}
+
+/**
  * Validates audio file constraints (size, format headers, duration, and decodability).
  */
 export async function validateAudioFile(
@@ -154,9 +205,8 @@ export async function validateAudioFile(
         return { valid: false, error: 'Audio processing was cancelled by user.' };
       }
 
-      // Clone array buffer for decodeAudioData (which detaches the buffer in some browsers)
-      const clonedBuffer = arrayBuffer.slice(0);
-      const decodedBuffer = await audioContext.decodeAudioData(clonedBuffer);
+      // Use Safari-safe decodeAudioData with cloned buffer
+      const decodedBuffer = await decodeAudioDataCompat(audioContext, arrayBuffer);
       const duration = decodedBuffer.duration;
 
       if (duration < MIN_DURATION_SECONDS) {
@@ -211,6 +261,13 @@ export async function validateAudioFile(
         numberOfChannels: decodedBuffer.numberOfChannels,
       };
     } catch {
+      if (headerCheck.format === 'OGG') {
+        return {
+          valid: false,
+          error: 'Apple Safari does not natively support Ogg Vorbis audio. Please upload an MP3, WAV, or MP4/M4A file for universal browser compatibility.',
+          fileSize: file.size,
+        };
+      }
       return {
         valid: false,
         error: 'Browser audio decoder failed to decode this file. The audio data may be malformed or use an unsupported codec.',

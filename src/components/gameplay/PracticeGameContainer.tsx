@@ -16,6 +16,7 @@ import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { GameplayEffectsOverlay } from './GameplayEffectsOverlay';
+import { safeLocalStorage } from '@/lib/storage/safeStorage';
 import {
   Volume2,
   VolumeX,
@@ -75,7 +76,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
 
   const [calibrationMs, setCalibrationMs] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('praisetiles_calibration_ms');
+      const saved = safeLocalStorage.getItem('praisetiles_calibration_ms');
       if (saved) {
         const val = parseInt(saved, 10);
         if (!isNaN(val)) return val;
@@ -305,7 +306,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   }, [audioPlayer, isWaitingForStart, isPaused]);
 
   return (
-    <div className="relative w-full h-screen flex flex-col justify-between bg-[#061214] text-white overflow-hidden select-none">
+    <div className="relative w-full h-[100dvh] min-h-[100dvh] flex flex-col justify-between bg-[#061214] text-white overflow-hidden select-none">
       <AtmosphericBackground />
 
       <GameplayEffectsOverlay
@@ -317,7 +318,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       />
 
       {/* Top Practice HUD */}
-      <header className="relative z-30 w-full max-w-lg mx-auto pt-3 px-4 flex flex-col items-center">
+      <header className="relative z-30 w-full max-w-lg mx-auto pt-3 safe-pt px-4 flex flex-col items-center">
         <div className="w-full flex items-center justify-between">
           <button
             onClick={handlePause}

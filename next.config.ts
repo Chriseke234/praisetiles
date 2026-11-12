@@ -10,8 +10,9 @@ const securityHeaders = [
     value: 'max-age=63072000; includeSubDomains; preload',
   },
   {
+    // Modern standard: disable legacy XSS filter to prevent false positives in Safari/WebKit
     key: 'X-XSS-Protection',
-    value: '1; mode=block',
+    value: '0',
   },
   {
     key: 'X-Frame-Options',
@@ -35,10 +36,10 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co",
+      "img-src 'self' data: blob: https://images.unsplash.com https://*.unsplash.com https://*.supabase.co",
       "font-src 'self' data:",
       "media-src 'self' blob: https://*.supabase.co",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.unsplash.com",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
@@ -48,9 +49,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
@@ -62,7 +60,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        // Apply security headers to page routes, avoiding static asset chunk delivery issues in Safari
+        source: '/((?!_next/static|_next/image|favicon.ico).*)',
         headers: securityHeaders,
       },
     ];

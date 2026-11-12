@@ -5,6 +5,7 @@
 
 import { RunResult } from '@/types/game';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { safeLocalStorage } from '@/lib/storage/safeStorage';
 
 export interface Challenge {
   id: string;
@@ -136,7 +137,7 @@ export function loadPlayerChallenges(): Challenge[] {
   if (typeof window === 'undefined') return getDefaultChallenges();
 
   try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_CHALLENGES);
+    const saved = safeLocalStorage.getItem(LOCAL_STORAGE_CHALLENGES);
     if (saved) {
       const parsed: Challenge[] = JSON.parse(saved);
       const now = new Date();
@@ -170,7 +171,7 @@ export function loadPlayerChallenges(): Challenge[] {
 export function savePlayerChallenges(challenges: Challenge[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_CHALLENGES, JSON.stringify(challenges));
+    safeLocalStorage.setItem(LOCAL_STORAGE_CHALLENGES, JSON.stringify(challenges));
   } catch {
     // Ignore
   }
@@ -238,7 +239,7 @@ export function evaluateAchievements(
   let existing: Record<string, string> = {};
 
   try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_ACHIEVEMENTS);
+    const saved = safeLocalStorage.getItem(LOCAL_STORAGE_ACHIEVEMENTS);
     if (saved) existing = JSON.parse(saved);
   } catch {}
 
@@ -259,7 +260,7 @@ export function evaluateAchievements(
   checkBadge('perfect_streak', (result.highestPerfectStreak ?? 0) >= 25 || (stats.highestPerfectStreak ?? 0) >= 25);
 
   try {
-    localStorage.setItem(LOCAL_STORAGE_ACHIEVEMENTS, JSON.stringify(existing));
+    safeLocalStorage.setItem(LOCAL_STORAGE_ACHIEVEMENTS, JSON.stringify(existing));
   } catch {}
 
   return unlockedIds;
@@ -290,7 +291,7 @@ export function checkDailyLoginStreak(): PlayerStreakInfo {
   };
 
   try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_STREAK);
+    const saved = safeLocalStorage.getItem(LOCAL_STORAGE_STREAK);
     if (saved) {
       streakInfo = JSON.parse(saved);
     }
@@ -328,7 +329,7 @@ export function checkDailyLoginStreak(): PlayerStreakInfo {
   };
 
   try {
-    localStorage.setItem(LOCAL_STORAGE_STREAK, JSON.stringify(updated));
+    safeLocalStorage.setItem(LOCAL_STORAGE_STREAK, JSON.stringify(updated));
   } catch {}
 
   return updated;

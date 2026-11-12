@@ -3,6 +3,11 @@ import { isSupabaseConfigured, getSupabaseBrowserClient } from '../src/lib/supab
 import { MatchRecord } from '../src/types/auth';
 
 describe('Auth & Supabase Fallback Handling', () => {
+  beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  });
+
   it('safely detects when Supabase environment variables are missing', () => {
     // In test environment without .env, isSupabaseConfigured must return false
     expect(isSupabaseConfigured()).toBe(false);

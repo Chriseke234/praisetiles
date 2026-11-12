@@ -17,6 +17,7 @@ import { GuitarTilesView } from './GuitarTilesView';
 import { MilestoneProgressBar } from './MilestoneProgressBar';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { GameplayEffectsOverlay } from './GameplayEffectsOverlay';
+import { safeLocalStorage } from '@/lib/storage/safeStorage';
 import {
   Volume2,
   VolumeX,
@@ -78,7 +79,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
 
   const [calibrationMs, setCalibrationMs] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('praisetiles_calibration_ms');
+      const saved = safeLocalStorage.getItem('praisetiles_calibration_ms');
       if (saved) {
         const val = parseInt(saved, 10);
         if (!isNaN(val)) return val;
@@ -242,7 +243,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     initEngine();
   }, [map, initEngine]);
 
-  // Auto-pause on browser tab switch or loss of focus
+  // Auto-pause on browser tab switch or app backgrounding (Safari safe)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && !isWaitingForStart && !failedResult && !isPaused) {
@@ -251,7 +252,9 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     };
 
     const handleWindowBlur = () => {
-      if (!isWaitingForStart && !failedResult && !isPaused) {
+      // In iOS Safari, touching address bar or UI chrome fires window.blur without hiding the document.
+      // Only pause if document is actually hidden or player navigated away.
+      if (document.hidden && !isWaitingForStart && !failedResult && !isPaused) {
         handlePause();
       }
     };
@@ -332,7 +335,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   const progressPercent = map.duration > 0 ? (currentAudioTime / map.duration) * 100 : 0;
 
   return (
-    <div className="relative w-full h-screen flex flex-col justify-between bg-[#080414] text-white overflow-hidden select-none">
+    <div className="relative w-full h-[100dvh] min-h-[100dvh] flex flex-col justify-between bg-[#080414] text-white overflow-hidden select-none">
       {/* Deep Purple Ethereal Atmosphere */}
       <AtmosphericBackground />
 
@@ -346,7 +349,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       />
 
       {/* Top Floating HUD: Controls, Milestone Bar & Centered Large Score */}
-      <header className="relative z-30 w-full max-w-lg mx-auto pt-3 px-4 flex flex-col items-center">
+      <header className="relative z-30 w-full max-w-lg mx-auto pt-3 safe-pt px-4 flex flex-col items-center">
         {/* Controls Row */}
         <div className="w-full flex items-center justify-between">
           {/* Pause Button */}

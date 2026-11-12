@@ -14,6 +14,7 @@ import { ResultScreen } from '@/components/gameplay/ResultScreen';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ProfileModal } from '@/components/profile/ProfileModal';
 import { TransferGuestModal } from '@/components/auth/TransferGuestModal';
+import { ArenaLoadingScreen } from '@/components/loading/ArenaLoadingScreen';
 
 type AppView = 'MENU' | 'UPLOAD' | 'PREVIEW' | 'PLAYING' | 'RESULT';
 
@@ -28,6 +29,7 @@ function PraiseTilesGame() {
   const [xpEarned, setXpEarned] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0.8);
   const [reducedMotion, setReducedMotion] = useState<boolean>(false);
+  const [isPreparingPerformance, setIsPreparingPerformance] = useState<boolean>(false);
 
   // Modals state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -64,13 +66,17 @@ function PraiseTilesGame() {
     setView('PREVIEW');
   };
 
-  // Handle Quick Play (bypass preview straight to gameplay per GDD §4)
+  // Handle Quick Play (smooth transition with loading feedback)
   const handleQuickPlay = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
     setActiveAudioPlayer(audioPlayer);
     setAudioBuffer(buffer);
     setRhythmMap(map);
     setSongTitle(title);
-    setView('PLAYING');
+    setIsPreparingPerformance(true);
+    setTimeout(() => {
+      setIsPreparingPerformance(false);
+      setView('PLAYING');
+    }, 600);
   };
 
   // Handle YouTube Music setup
@@ -88,13 +94,21 @@ function PraiseTilesGame() {
     setAudioBuffer(null);
     setRhythmMap(map);
     setSongTitle(title);
-    setView('PLAYING');
+    setIsPreparingPerformance(true);
+    setTimeout(() => {
+      setIsPreparingPerformance(false);
+      setView('PLAYING');
+    }, 600);
   };
 
-  // Start gameplay
+  // Start gameplay with smooth arena loading transition
   const handleStartGame = () => {
     if (rhythmMap) {
-      setView('PLAYING');
+      setIsPreparingPerformance(true);
+      setTimeout(() => {
+        setIsPreparingPerformance(false);
+        setView('PLAYING');
+      }, 600);
     }
   };
 
@@ -219,6 +233,19 @@ function PraiseTilesGame() {
           onChangeInstrument={() => handleChangeInstrument()}
           onMainMenu={() => setView('MENU')}
           onOpenAuth={() => setIsAuthModalOpen(true)}
+        />
+      )}
+
+      {/* Full-screen Performance Prep Overlay */}
+      {isPreparingPerformance && (
+        <ArenaLoadingScreen
+          title={songTitle}
+          subtitle="Preparing your performance..."
+          mode={instrument}
+          statusText="Entering Gospel Rhythm Arena..."
+          substatusText="Synchronizing 4-lane engine"
+          mascotPose="listening"
+          reducedMotion={reducedMotion}
         />
       )}
 

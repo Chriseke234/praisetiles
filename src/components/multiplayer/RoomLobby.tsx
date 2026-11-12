@@ -22,6 +22,7 @@ import { NominationPanel } from './NominationPanel';
 import { VotingPanel } from './VotingPanel';
 import { RoomGameContainer } from './RoomGameContainer';
 import { MultiplayerResultScreen } from './MultiplayerResultScreen';
+import { MultiplayerLoadingOverlay } from '@/components/loading/MultiplayerLoadingOverlay';
 import { RoomChat } from './RoomChat';
 import { GameAudioPlayer } from '@/lib/audio/player';
 import { validateAudioFile, decodeAudioDataCompat } from '@/lib/audio/validator';
@@ -279,6 +280,19 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({ inviteCode, onLeave }) => 
         onRematch={handleRematch}
         onLeave={handleLeave}
         isHost={isHost}
+      />
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Render: loading state before room state is established
+  // -----------------------------------------------------------------------
+  if (isLoading && !roomState) {
+    return (
+      <MultiplayerLoadingOverlay
+        roomCode={inviteCode}
+        stage="connecting"
+        onLeave={onLeave}
       />
     );
   }

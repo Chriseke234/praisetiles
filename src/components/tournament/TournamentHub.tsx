@@ -20,6 +20,7 @@ import { Tournament } from '@/types/tournament';
 import { TournamentCard } from './TournamentCard';
 import { TournamentDetailView } from './TournamentDetailView';
 import { TournamentWizardModal } from './TournamentWizardModal';
+import { TournamentSkeletonLoader } from '@/components/loading/TournamentSkeletonLoader';
 import { useTournament } from '@/lib/tournament/TournamentContext';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { InstrumentType } from '@/types/game';
@@ -212,9 +213,8 @@ export const TournamentHub: React.FC<TournamentHubProps> = ({
 
               {/* Tournament Grid */}
               {isLoading && tournaments.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-400">
-                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                  <p className="text-xs uppercase tracking-wider font-semibold">Scanning Active Brackets...</p>
+                <div className="py-6">
+                  <TournamentSkeletonLoader />
                 </div>
               ) : filteredTournaments.length === 0 ? (
                 <div className="py-20 text-center space-y-3">

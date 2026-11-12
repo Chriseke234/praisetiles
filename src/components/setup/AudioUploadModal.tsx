@@ -47,6 +47,9 @@ import { GameAudioPlayer } from '@/lib/audio/player';
 import { YouTubeAudioPlayer } from '@/lib/audio/youtubePlayer';
 import { RhythmMap, InstrumentType } from '@/types/game';
 import { PraiseMascot } from '@/components/common/PraiseMascot';
+import { AnimatedVinyl } from '@/components/loading/AnimatedVinyl';
+import { ArenaProgressBar } from '@/components/loading/ArenaProgressBar';
+import { LibrarySkeletonLoader } from '@/components/loading/LibrarySkeletonLoader';
 
 interface SearchTrack {
   id: string;
@@ -507,9 +510,8 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
 
             {/* Track Results List */}
             {isSearching ? (
-              <div className="py-12 flex flex-col items-center justify-center text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-400 mb-2" />
-                <p className="text-xs text-gray-400">Searching gospel streaming catalog&hellip;</p>
+              <div className="py-4">
+                <LibrarySkeletonLoader count={4} message="Searching gospel streaming catalog..." />
               </div>
             ) : searchResults.length > 0 ? (
               <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
@@ -838,15 +840,33 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
           </div>
         )}
 
-        {/* Processing Spinner Overlay */}
+        {/* Processing & Audio Analysis Studio Overlay */}
         {isProcessing && (
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 text-center z-30 animate-fadeIn">
-            <Loader2 className="w-12 h-12 animate-spin text-amber-400 mb-4" />
-            <h3 className="text-lg font-bold text-white">Synthesizing &amp; Analyzing Audio</h3>
-            <p className="text-xs text-amber-300 mt-1 font-mono">{processingStatus}</p>
-            <p className="text-[11px] text-gray-500 mt-3 max-w-xs">
-              Generating 4-lane notes, onset timestamps, and progressive 3-Star density milestones&hellip;
-            </p>
+          <div className="absolute inset-0 bg-[#080414]/95 backdrop-blur-xl rounded-3xl flex flex-col items-center justify-center p-6 text-center z-30 animate-fadeIn space-y-5">
+            {/* Ambient Animated Vinyl */}
+            <div className="relative">
+              <AnimatedVinyl size="md" isSpinning={true} glowColor="gold" />
+            </div>
+
+            {/* Title & Mascot Row */}
+            <div className="flex items-center gap-3">
+              <PraiseMascot pose="listening" size="sm" className="shrink-0" />
+              <div className="text-left">
+                <h3 className="text-base sm:text-lg font-black bg-gradient-to-r from-amber-400 via-amber-200 to-purple-300 bg-clip-text text-transparent">
+                  Synthesizing &amp; Analyzing Audio
+                </h3>
+                <p className="text-xs text-amber-300 font-mono mt-0.5">{processingStatus}</p>
+              </div>
+            </div>
+
+            {/* Calibrated Progress Indicator */}
+            <div className="w-full max-w-sm">
+              <ArenaProgressBar
+                statusText={processingStatus}
+                substatusText="Generating 4-lane notes, onsets, and 3-Star density milestones"
+                showPercentage={false}
+              />
+            </div>
           </div>
         )}
       </div>

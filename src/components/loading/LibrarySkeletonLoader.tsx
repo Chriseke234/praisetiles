@@ -88,25 +88,6 @@ export const LibrarySkeletonLoader: React.FC<LibrarySkeletonLoaderProps> = ({
           </div>
         ))}
       </div>
-
-      <style jsx global>{`
-        @keyframes equalizerBounce {
-          0% {
-            transform: scaleY(0.3);
-          }
-          100% {
-            transform: scaleY(1);
-          }
-        }
-        @keyframes shimmerSweep {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
     </div>
   );
 };

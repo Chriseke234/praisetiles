@@ -171,3 +171,26 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out both;
 }
+
+/* ───────────────────────────────────────────────
+   Loading Screen Keyframes
+   Used by ArenaProgressBar, LibrarySkeletonLoader,
+   and TournamentSkeletonLoader loading components.
+   Defined globally to avoid <style jsx> warnings.
+─────────────────────────────────────────────── */
+
+@keyframes indeterminateSweep {
+  0%   { transform: translateX(-120%); }
+  50%  { transform: translateX(160%); }
+  100% { transform: translateX(340%); }
+}
+
+@keyframes equalizerBounce {
+  0%   { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}

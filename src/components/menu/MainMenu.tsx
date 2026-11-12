@@ -52,9 +52,10 @@ const TournamentHub = dynamic(() => import('@/components/tournament/TournamentHu
 const AudioEvaluationTool = dynamic(() => import('@/components/dev/AudioEvaluationTool').then(m => m.AudioEvaluationTool), { ssr: false });
 const TermsOfServiceModal = dynamic(() => import('@/components/legal/TermsOfServiceModal').then(m => m.TermsOfServiceModal), { ssr: false });
 const PrivacyPolicyModal = dynamic(() => import('@/components/legal/PrivacyPolicyModal').then(m => m.PrivacyPolicyModal), { ssr: false });
+const ChallengePanel = dynamic(() => import('@/components/progression/ChallengePanel').then(m => m.ChallengePanel), { ssr: false });
 
 interface MainMenuProps {
-  onSelectInstrument: (instrument: InstrumentType) => void;
+  onSelectInstrument: (instrument: InstrumentType, isPractice?: boolean) => void;
   volume: number;
   onVolumeChange: (vol: number) => void;
   reducedMotion: boolean;
@@ -81,6 +82,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [showLeaderboardModal, setShowLeaderboardModal] = React.useState(false);
   const [showTournamentsHub, setShowTournamentsHub]     = React.useState(false);
   const [showNotifications, setShowNotifications]       = React.useState(false);
+  const [showChallenges, setShowChallenges]             = React.useState(false);
   const [showAudioEval, setShowAudioEval]               = React.useState(false);
   const [showTermsModal, setShowTermsModal]             = React.useState(false);
   const [showPrivacyModal, setShowPrivacyModal]         = React.useState(false);
@@ -126,6 +128,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             >
               <Award className="w-4 h-4 text-amber-400 shrink-0" />
               <span className="hidden lg:inline">Tournaments</span>
+            </button>
+
+            {/* Challenges Hub Trigger */}
+            <button
+              onClick={() => setShowChallenges(true)}
+              title="Daily & Weekly Challenges"
+              className="px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-amber-500/40 text-gray-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 whitespace-nowrap"
+            >
+              <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+              <span className="hidden lg:inline">Challenges</span>
             </button>
 
             {/* Leaderboard Modal Trigger */}
@@ -758,7 +770,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
                 {/* 3. Practice Mode */}
                 <button
-                  onClick={() => onSelectInstrument('piano')}
+                  onClick={() => onSelectInstrument('piano', true)}
                   className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
                 >
                   <div>
@@ -1166,6 +1178,12 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <AudioEvaluationTool
         isOpen={showAudioEval}
         onClose={() => setShowAudioEval(false)}
+      />
+
+      {/* Daily & Weekly Challenges Panel */}
+      <ChallengePanel
+        isOpen={showChallenges}
+        onClose={() => setShowChallenges(false)}
       />
 
       {/* Production Legal & Compliance Modals */}

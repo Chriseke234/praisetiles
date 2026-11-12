@@ -61,6 +61,10 @@ export interface ScoreState {
   runAccuracy: number; // 0.0 to 100.0%
   totalEncountered: number;
   shieldsRemaining?: number;
+  currentPerfectStreak?: number;
+  maxPerfectStreak?: number;
+  sustainBonusPoints?: number;
+  completedSustainsCount?: number;
 }
 
 export interface RunResult {
@@ -79,6 +83,10 @@ export interface RunResult {
   greatCount?: number;
   goodCount?: number;
   missCount?: number;
+  highestPerfectStreak?: number;
+  sustainBonusPoints?: number;
+  completedSustainsCount?: number;
+  isPractice?: boolean;
 }
 
 export interface AudioValidationResult {

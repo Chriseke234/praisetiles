@@ -16,9 +16,20 @@ import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { MilestoneProgressBar } from './MilestoneProgressBar';
 import { AtmosphericBackground } from './AtmosphericBackground';
-import { Volume2, VolumeX, ArrowLeft, Sliders, RotateCcw, Award, Shield } from 'lucide-react';
+import { GameplayEffectsOverlay } from './GameplayEffectsOverlay';
+import {
+  Volume2,
+  VolumeX,
+  Sliders,
+  RotateCcw,
+  Award,
+  Shield,
+  Pause,
+  Play,
+  LogOut,
+  AlertTriangle,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useKeyBindings } from '@/hooks/useKeyBindings';
 
 interface GameContainerProps {
   map: RhythmMap;
@@ -55,6 +66,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     lane: number;
     key: number;
   } | null>(null);
+  const [sustainBonus, setSustainBonus] = useState<{
+    key: number;
+    points: number;
+  } | null>(null);
+
+  // Pause & Resume State
+  const [isPaused, setIsPaused] = useState(false);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
   const [calibrationMs, setCalibrationMs] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('praisetiles_calibration_ms');
@@ -66,14 +87,14 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     return 0;
   });
   const [showCalibration, setShowCalibration] = useState(false);
-  const { keyToLane, keys: keyBindings } = useKeyBindings();
-  const heldKeysRef = useRef<Set<string>>(new Set());
 
   const engineRef = useRef<GameEngine | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const activeLanesTimeoutRef = useRef<NodeJS.Timeout[]>([]);
   const judgementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sustainBonusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialCalibrationRef = useRef<number>(calibrationMs);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update calibration offset on active engine dynamically
   useEffect(() => {
@@ -96,9 +117,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({
 
         setNotes((prevNotes) =>
           prevNotes.map((n) =>
-            n.id === noteId ? { ...n, hit: true, grade, hitTimestamp: Date.now() } as Note : n
+            n.id === noteId ? ({ ...n, hit: true, grade, hitTimestamp: Date.now() } as Note) : n
           )
         );
+      },
+      onSustainCompleted: (_noteId, bonusPoints) => {
+        setSustainBonus({ key: Date.now(), points: bonusPoints });
+        if (sustainBonusTimeoutRef.current) clearTimeout(sustainBonusTimeoutRef.current);
+        sustainBonusTimeoutRef.current = setTimeout(() => {
+          setSustainBonus(null);
+        }, 1200);
       },
       onRunFailed: (result) => {
         audioPlayer.stop();
@@ -141,17 +169,18 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       audioPlayer.stop();
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (judgementTimeoutRef.current) clearTimeout(judgementTimeoutRef.current);
+      if (sustainBonusTimeoutRef.current) clearTimeout(sustainBonusTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
       timeouts.forEach(clearTimeout);
     };
   }, [initEngine, audioPlayer]);
 
-  // Start match kickoff smoothly on user action without consuming song notes
+  // Start match kickoff smoothly on direct user tap
   const handleStartGame = useCallback(async () => {
     if (!isWaitingForStart) return;
     setIsWaitingForStart(false);
 
     if (engineRef.current) {
-      // Warm up audio context first so start is instantaneous without clock freeze
       await audioPlayer.ensureContext();
       engineRef.current.start();
       await audioPlayer.play(0, () => {
@@ -160,86 +189,120 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     }
   }, [isWaitingForStart, audioPlayer]);
 
-  // Restart song cleanly from in-lane fail state
+  // Pause match safely: freeze audio clock, engine progression, input
+  const handlePause = useCallback(() => {
+    if (isWaitingForStart || failedResult || isPaused) return;
+    setIsPaused(true);
+    if (engineRef.current) {
+      engineRef.current.pause();
+    }
+    audioPlayer.pause();
+  }, [isWaitingForStart, failedResult, isPaused, audioPlayer]);
+
+  // Resume with 3-2-1 countdown
+  const handleResume = useCallback(() => {
+    if (!isPaused || resumeCountdown !== null) return;
+    setShowExitConfirm(false);
+    setResumeCountdown(3);
+
+    let count = 3;
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+    countdownIntervalRef.current = setInterval(async () => {
+      count -= 1;
+      if (count > 0) {
+        setResumeCountdown(count);
+      } else {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        setResumeCountdown(null);
+        setIsPaused(false);
+        if (engineRef.current) {
+          engineRef.current.resume();
+        }
+        await audioPlayer.resume(() => {
+          engineRef.current?.handleCompletion();
+        });
+      }
+    }, 800);
+  }, [isPaused, resumeCountdown, audioPlayer]);
+
+  // Restart song cleanly
   const handleRestart = useCallback(() => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setResumeCountdown(null);
+    setIsPaused(false);
+    setShowExitConfirm(false);
     setFailedResult(null);
     setIsWaitingForStart(true);
     setScoreState(createInitialScoreState());
     setCurrentAudioTime(0);
     setNotes(map.notes.map((n) => ({ ...n, hit: false, grade: null })));
     setLatestJudgement(null);
+    setSustainBonus(null);
     initEngine();
   }, [map, initEngine]);
 
-  // Direct Tile Interaction Handlers (Piano Tiles style)
-  const handleTilePointerDown = useCallback((noteId: string, lane: number) => {
-    if (isWaitingForStart) {
-      handleStartGame();
-      return;
-    }
-    if (engineRef.current) {
-      engineRef.current.handleDirectTileDown(noteId, lane);
-    }
-  }, [isWaitingForStart, handleStartGame]);
-
-  const handleTilePointerUp = useCallback((noteId: string, lane: number) => {
-    if (engineRef.current) {
-      engineRef.current.handleDirectTileUp(noteId, lane);
-    }
-  }, []);
-
-  const handleLanePointerDown = useCallback((lane: number) => {
-    if (isWaitingForStart) {
-      handleStartGame();
-      return;
-    }
-    if (engineRef.current) {
-      engineRef.current.handleLaneInput(lane);
-    }
-  }, [isWaitingForStart, handleStartGame]);
-
-  // Desktop Keyboard Event Listeners (D, F, J, K + Space to Start)
+  // Auto-pause on browser tab switch or loss of focus
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-      if (isWaitingForStart) {
-        if (e.code === 'Space' || e.code === 'Enter' || keyToLane(e.key) >= 0) {
-          e.preventDefault();
-          handleStartGame();
-        }
-        return;
-      }
-
-      const lane = keyToLane(e.key);
-      if (lane >= 0) {
-        e.preventDefault();
-        const lowerKey = e.key.toLowerCase();
-        if (!heldKeysRef.current.has(lowerKey)) {
-          heldKeysRef.current.add(lowerKey);
-          handleLanePointerDown(lane);
-        }
+    const handleVisibilityChange = () => {
+      if (document.hidden && !isWaitingForStart && !failedResult && !isPaused) {
+        handlePause();
       }
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      const lane = keyToLane(e.key);
-      if (lane >= 0) {
-        heldKeysRef.current.delete(e.key.toLowerCase());
-        if (engineRef.current) {
-          engineRef.current.handlePointerUp(lane);
-        }
+    const handleWindowBlur = () => {
+      if (!isWaitingForStart && !failedResult && !isPaused) {
+        handlePause();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [isWaitingForStart, handleStartGame, keyToLane, handleLanePointerDown]);
+  }, [isWaitingForStart, failedResult, isPaused, handlePause]);
+
+  // Direct Tile Interaction Handlers (Direct Touch & Click only - NO keyboard)
+  const handleTilePointerDown = useCallback(
+    (noteId: string, lane: number) => {
+      if (isPaused || resumeCountdown !== null) return;
+      if (isWaitingForStart) {
+        handleStartGame();
+        return;
+      }
+      if (engineRef.current) {
+        engineRef.current.handleDirectTileDown(noteId, lane);
+      }
+    },
+    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
+  );
+
+  const handleTilePointerUp = useCallback(
+    (noteId: string, lane: number) => {
+      if (isPaused || resumeCountdown !== null) return;
+      if (engineRef.current) {
+        engineRef.current.handleDirectTileUp(noteId, lane);
+      }
+    },
+    [isPaused, resumeCountdown]
+  );
+
+  const handleLanePointerDown = useCallback(
+    (lane: number) => {
+      if (isPaused || resumeCountdown !== null) return;
+      if (isWaitingForStart) {
+        handleStartGame();
+        return;
+      }
+      if (engineRef.current) {
+        engineRef.current.handleLaneInput(lane);
+      }
+    },
+    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
+  );
 
   const handlePointerLeaveArea = useCallback(() => {
     if (engineRef.current) {
@@ -250,7 +313,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Main high-precision animation loop
   useEffect(() => {
     const loop = () => {
-      if (engineRef.current && !isWaitingForStart && !failedResult) {
+      if (engineRef.current && !isWaitingForStart && !failedResult && !isPaused) {
         const time = audioPlayer.getCurrentTime();
         setCurrentAudioTime(time);
         engineRef.current.update(time);
@@ -263,34 +326,46 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [audioPlayer, isWaitingForStart, failedResult]);
+  }, [audioPlayer, isWaitingForStart, failedResult, isPaused]);
 
   // Track milestone progress percentage (0 - 100%)
   const progressPercent = map.duration > 0 ? (currentAudioTime / map.duration) * 100 : 0;
 
   return (
     <div className="relative w-full h-screen flex flex-col justify-between bg-[#080414] text-white overflow-hidden select-none">
-      {/* Deep Purple Ethereal Atmosphere & Water Piano Silhouette */}
+      {/* Deep Purple Ethereal Atmosphere */}
       <AtmosphericBackground />
+
+      {/* Dynamic Hit Animations, Particle Bursts, Combo Fire & Perfect Streak Overlay */}
+      <GameplayEffectsOverlay
+        latestJudgement={latestJudgement}
+        combo={scoreState.combo}
+        currentPerfectStreak={scoreState.currentPerfectStreak ?? 0}
+        sustainBonusAwarded={sustainBonus}
+        reducedMotion={reducedMotion}
+      />
 
       {/* Top Floating HUD: Controls, Milestone Bar & Centered Large Score */}
       <header className="relative z-30 w-full max-w-lg mx-auto pt-3 px-4 flex flex-col items-center">
-        {/* Utility Controls Row */}
+        {/* Controls Row */}
         <div className="w-full flex items-center justify-between">
+          {/* Pause Button */}
           <button
-            onClick={onExit}
-            aria-label="Exit Game"
-            className="p-2 rounded-xl bg-purple-950/60 border border-purple-500/20 text-gray-300 hover:text-white hover:border-amber-400/50 transition backdrop-blur-sm"
+            onClick={handlePause}
+            disabled={isWaitingForStart || !!failedResult || isPaused}
+            aria-label="Pause Game"
+            className="p-2.5 rounded-xl bg-purple-950/60 border border-purple-500/20 text-gray-300 hover:text-white hover:border-amber-400/50 transition backdrop-blur-sm cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <Pause className="w-4 h-4 fill-current" />
           </button>
 
+          {/* Right Utility Buttons */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowCalibration((prev) => !prev)}
               aria-label="Latency Calibration"
               title={`Calibration: ${calibrationMs >= 0 ? '+' : ''}${calibrationMs}ms`}
-              className={`p-2 rounded-xl border backdrop-blur-sm transition ${
+              className={`p-2.5 rounded-xl border backdrop-blur-sm transition cursor-pointer ${
                 calibrationMs !== 0
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                   : 'bg-purple-950/60 border-purple-500/20 text-gray-300 hover:text-white'
@@ -302,7 +377,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             <button
               onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
               aria-label={volume > 0 ? 'Mute Audio' : 'Unmute Audio'}
-              className="p-2 rounded-xl bg-purple-950/60 border border-purple-500/20 text-gray-300 hover:text-white hover:border-amber-400/50 transition backdrop-blur-sm"
+              className="p-2.5 rounded-xl bg-purple-950/60 border border-purple-500/20 text-gray-300 hover:text-white hover:border-amber-400/50 transition backdrop-blur-sm cursor-pointer"
             >
               {volume > 0 ? (
                 <Volume2 className="w-4 h-4 text-amber-400" />
@@ -322,7 +397,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         </div>
 
         {/* Large Prominent Centered Score Typography */}
-        <div className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] mt-1">
+        <div className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] mt-1 font-mono">
           {scoreState.score.toLocaleString()}
         </div>
 
@@ -388,7 +463,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
-            keyBindings={keyBindings}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
             onLanePointerDown={handleLanePointerDown}
@@ -406,7 +480,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}
             activeLanes={activeLanes}
-            keyBindings={keyBindings}
             onTilePointerDown={handleTilePointerDown}
             onTilePointerUp={handleTilePointerUp}
             onLanePointerDown={handleLanePointerDown}
@@ -419,36 +492,99 @@ export const GameContainer: React.FC<GameContainerProps> = ({
           />
         )}
 
-        {/* Floating Neon Judgement Pop & Attached Combo Badge (Screen 2 Inspiration) */}
-        {latestJudgement && !isWaitingForStart && !failedResult && (
-          <div
-            key={latestJudgement.key}
-            className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30 flex flex-col items-center animate-bounce text-center"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-3xl sm:text-4xl font-black tracking-widest uppercase drop-shadow-[0_0_20px_rgba(244,114,182,0.9)] ${
-                  latestJudgement.grade === 'PERFECT'
-                    ? 'text-pink-400 bg-gradient-to-r from-pink-400 via-purple-300 to-amber-300 bg-clip-text text-transparent'
-                    : latestJudgement.grade === 'GREAT'
-                    ? 'text-cyan-400'
-                    : latestJudgement.grade === 'GOOD'
-                    ? 'text-amber-400'
-                    : 'text-rose-500'
-                }`}
-              >
-                {latestJudgement.grade}
-              </span>
-              {scoreState.combo > 1 && (
-                <span className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight bg-white/10 px-2 py-0.5 rounded-lg border border-white/20 shadow-md">
-                  x{scoreState.combo}
+        {/* 3-2-1 Countdown Overlay for Resume */}
+        {resumeCountdown !== null && (
+          <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn pointer-events-none">
+            <div className="text-7xl sm:text-8xl font-black text-amber-300 animate-ping font-mono drop-shadow-[0_0_35px_rgba(251,191,36,0.9)]">
+              {resumeCountdown}
+            </div>
+            <p className="text-xs uppercase tracking-widest text-purple-200 mt-4 font-bold">
+              GET READY...
+            </p>
+          </div>
+        )}
+
+        {/* Pause Modal Overlay */}
+        {isPaused && resumeCountdown === null && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col justify-center items-center px-4 animate-fadeIn">
+            <div className="max-w-sm w-full bg-[#12082b] border border-purple-500/40 rounded-3xl p-6 shadow-2xl text-center space-y-4">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 inline-block">
+                  Paused
                 </span>
+                <h3 className="text-2xl font-black text-white tracking-wide">Praise Paused</h3>
+                <p className="text-xs text-purple-300">{map.songTitle}</p>
+              </div>
+
+              {/* In-Game Stats Summary */}
+              <div className="grid grid-cols-2 gap-2 bg-purple-950/40 p-3 rounded-2xl border border-purple-500/20 text-xs font-mono">
+                <div>
+                  <span className="text-[10px] text-gray-400 block uppercase">Score</span>
+                  <span className="text-base font-black text-white">{scoreState.score.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 block uppercase">Max Combo</span>
+                  <span className="text-base font-black text-amber-400">{scoreState.maxCombo}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {!showExitConfirm ? (
+                <div className="space-y-2 pt-2">
+                  <button
+                    onClick={handleResume}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(251,191,36,0.6)] cursor-pointer transition-transform hover:scale-102 active:scale-98"
+                  >
+                    <Play className="w-4 h-4 fill-black" />
+                    <span>Resume Game</span>
+                  </button>
+
+                  <button
+                    onClick={handleRestart}
+                    className="w-full py-3 px-4 rounded-xl bg-purple-900/60 hover:bg-purple-900/80 border border-purple-500/30 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Restart Song</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowExitConfirm(true)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-transparent hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 text-rose-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Exit Song</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2 bg-rose-950/30 border border-rose-500/30 p-3.5 rounded-2xl">
+                  <div className="flex items-center justify-center gap-2 text-rose-300">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Confirm Exit?</span>
+                  </div>
+                  <p className="text-[11px] text-gray-300">
+                    Your current score and progress will not be saved.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setShowExitConfirm(false)}
+                      className="py-2 px-3 rounded-lg bg-gray-800 text-gray-300 hover:text-white text-xs font-bold uppercase cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={onExit}
+                      className="py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase cursor-pointer"
+                    >
+                      Yes, Exit
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* In-Lane Failure / Revive Cards Overlay (Screen 3 Inspiration) */}
+        {/* In-Lane Failure Cards Overlay */}
         {failedResult && (
           <div className="absolute inset-0 z-40 bg-black/60 backdrop-blur-xs flex flex-col justify-center px-4 animate-fadeIn">
             <div className="text-center space-y-2 mb-8">
@@ -462,9 +598,8 @@ export const GameContainer: React.FC<GameContainerProps> = ({
               </p>
             </div>
 
-            {/* In-Lane Interactive Action Cards */}
+            {/* Action Cards */}
             <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto w-full">
-              {/* Retry / Play Card */}
               <button
                 onClick={handleRestart}
                 className="h-28 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 border border-amber-300 shadow-[0_0_25px_rgba(251,191,36,0.6)] flex flex-col items-center justify-center gap-2 text-black font-black transition-transform hover:scale-105 active:scale-95 cursor-pointer"
@@ -473,7 +608,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({
                 <span className="text-sm uppercase tracking-widest">RETRY</span>
               </button>
 
-              {/* Summary / Revive Card */}
               <button
                 onClick={() => onRunFinished(failedResult)}
                 className="h-28 rounded-2xl bg-gradient-to-b from-purple-600 to-purple-900 border border-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.6)] flex flex-col items-center justify-center gap-2 text-white font-black transition-transform hover:scale-105 active:scale-95 cursor-pointer"

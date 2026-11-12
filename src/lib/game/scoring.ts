@@ -80,6 +80,10 @@ export function createInitialScoreState(): ScoreState {
     runAccuracy: 100.0,
     totalEncountered: 0,
     shieldsRemaining: GAMEPLAY_CONFIG.LIVES.STARTING_SHIELDS,
+    currentPerfectStreak: 0,
+    maxPerfectStreak: 0,
+    sustainBonusPoints: 0,
+    completedSustainsCount: 0,
   };
 }
 
@@ -100,6 +104,11 @@ export function applyHitToScoreState(current: ScoreState, grade: Exclude<HitGrad
 
   const runAccuracy = calculateAccuracy(perfectCount, greatCount, goodCount, totalEncountered);
 
+  // Perfect streak logic
+  const isPerfect = grade === 'PERFECT';
+  const currentPerfectStreak = isPerfect ? (current.currentPerfectStreak ?? 0) + 1 : 0;
+  const maxPerfectStreak = Math.max(current.maxPerfectStreak ?? 0, currentPerfectStreak);
+
   return {
     ...current,
     score: current.score + pointsEarned,
@@ -111,6 +120,10 @@ export function applyHitToScoreState(current: ScoreState, grade: Exclude<HitGrad
     runAccuracy,
     totalEncountered,
     shieldsRemaining: current.shieldsRemaining ?? GAMEPLAY_CONFIG.LIVES.STARTING_SHIELDS,
+    currentPerfectStreak,
+    maxPerfectStreak,
+    sustainBonusPoints: current.sustainBonusPoints ?? 0,
+    completedSustainsCount: current.completedSustainsCount ?? 0,
   };
 }
 
@@ -136,6 +149,7 @@ export function applyMissToScoreState(current: ScoreState): ScoreState {
     runAccuracy,
     totalEncountered,
     shieldsRemaining,
+    currentPerfectStreak: 0,
   };
 }
 
@@ -175,17 +189,20 @@ export function applySustainCompletionToScoreState(current: ScoreState): ScoreSt
   return {
     ...current,
     score: current.score + bonus,
+    sustainBonusPoints: (current.sustainBonusPoints ?? 0) + bonus,
+    completedSustainsCount: (current.completedSustainsCount ?? 0) + 1,
   };
 }
 
 /**
  * Handles early release of a sustained note.
- * Early release preserves points earned so far, but resets combo to 0.
+ * Early release preserves points earned so far, but resets combo and perfect streak to 0.
  */
 export function applyEarlyReleaseToScoreState(current: ScoreState): ScoreState {
   return {
     ...current,
     combo: 0,
+    currentPerfectStreak: 0,
   };
 }
 

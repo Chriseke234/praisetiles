@@ -1,17 +1,9 @@
 'use client';
 
 /**
- * RoomGameContainer — Multiplayer wrapper around the existing GameEngine.
- *
- * Reuses Phase 1 GameEngine, GameAudioPlayer, PianoTilesView and GuitarTilesView
- * without modification. Adds:
- *  - Synchronized start via AudioContext scheduling
- *  - Periodic score broadcasting (~2s intervals)
- *  - Elimination broadcast on run failure
- *  - Opponent status bar
- *  - Match result submission via RoomContext.finalizeMatch
- *
- * Players who are eliminated continue to observe; others keep playing.
+ * RoomGameContainer — Upgraded Multiplayer Gameplay Engine with
+ * Live Leaderboard Status, #1 Leading Indicator, Non-Disruptive Elimination Spectating,
+ * and Dynamic Gameplay Effects Overlay.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,8 +21,9 @@ import { getCurrentStarStage, createInitialScoreState } from '@/lib/game/scoring
 import { PianoTilesView } from '@/components/gameplay/PianoTilesView';
 import { GuitarTilesView } from '@/components/gameplay/GuitarTilesView';
 import { OpponentStatusBar } from './OpponentStatusBar';
+import { GameplayEffectsOverlay } from '@/components/gameplay/GameplayEffectsOverlay';
 import { useRoom } from '@/lib/multiplayer/RoomContext';
-import { Volume2, VolumeX, Star, Zap } from 'lucide-react';
+import { Volume2, VolumeX, Star, Zap, Crown, Eye } from 'lucide-react';
 import { MULTIPLAYER_CONFIG } from '@/config/multiplayer';
 import { PlayerEliminatedPayload } from '@/types/room';
 
@@ -68,6 +61,7 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
   const [activeLanes, setActiveLanes]       = useState<boolean[]>([false, false, false, false]);
   const [latestJudgement, setLatestJudgement] = useState<{ grade: HitGrade; lane: number; key: number } | null>(null);
   const [gameStarted, setGameStarted]       = useState(false);
+  const [isEliminated, setIsEliminated]     = useState(false);
 
   const engineRef         = useRef<GameEngine | null>(null);
   const animFrameRef      = useRef<number | null>(null);
@@ -77,6 +71,13 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
   const scoreStateRef     = useRef<ScoreState>(createInitialScoreState());
   const activeLanesTimeout = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Calculate live placement among active room players
+  const higherOpponentsCount = opponents.filter(
+    (o) => !o.isEliminated && o.score > scoreState.score
+  ).length;
+  const currentRank = 1 + higherOpponentsCount;
+  const isLeading = currentRank === 1 && scoreState.score > 0;
+
   // -----------------------------------------------------------------------
   // Synchronized start: schedule AudioContext play at scheduledStartAt
   // -----------------------------------------------------------------------
@@ -85,7 +86,6 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     const nowMs   = Date.now();
     const delayMs = Math.max(0, startMs - nowMs);
 
-    // Show countdown (seconds remaining)
     const tickDown = () => {
       const remaining = Math.max(0, new Date(scheduledStartAt).getTime() - Date.now());
       setCountdown(Math.ceil(remaining / 1000));
@@ -96,7 +96,6 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     requestAnimationFrame(tickDown);
 
     const startTimeout = setTimeout(() => {
-      // Use Web Audio API clock for precision
       audioPlayer.play(0).catch(console.error);
       setGameStarted(true);
       setCountdown(null);
@@ -105,11 +104,10 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     return () => {
       clearTimeout(startTimeout);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduledStartAt]);
+  }, [scheduledStartAt, audioPlayer]);
 
   // -----------------------------------------------------------------------
-  // Engine + rAF loop — only start once audio has started
+  // Engine + rAF loop
   // -----------------------------------------------------------------------
   useEffect(() => {
     if (!gameStarted) return;
@@ -131,6 +129,8 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         if (scoreTimerRef.current) clearInterval(scoreTimerRef.current);
 
+        setIsEliminated(true);
+
         const elim: PlayerEliminatedPayload = {
           userId:        '',
           score:         result.score,
@@ -141,7 +141,7 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
         };
         broadcastEliminated(elim);
 
-        // Non-blocking — player moves to observer mode
+        // Non-blocking finalize
         finalizeMatch({
           matchId,
           score:          result.score,
@@ -195,11 +195,9 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     engineRef.current = engine;
     engine.start();
 
-    // rAF loop — totalEncountered approximated from scoreState
     const loop = () => {
       const t = audioPlayer.getCurrentTime();
       setCurrentAudioTime(t);
-      // Phase 1 engine does not expose getTotalEncountered; use scoreState tally
       const s = scoreStateRef.current;
       totalEncRef.current = s.perfectCount + s.greatCount + s.goodCount + s.missCount;
       engine.update(t);
@@ -218,23 +216,29 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
       timeouts.forEach(clearTimeout);
       engine.stop();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStarted]);
+  }, [gameStarted, map, instrument, audioPlayer, broadcastScore, broadcastEliminated, finalizeMatch, matchId, onMatchFinished]);
 
-  // -----------------------------------------------------------------------
-  // Direct Tile Interaction (Piano Tiles style)
-  // -----------------------------------------------------------------------
+  // Direct Tile Interaction Handlers
   const handleTilePointerDown = useCallback((noteId: string, lane: number) => {
+    if (isEliminated) return;
     if (engineRef.current) {
       engineRef.current.handleDirectTileDown(noteId, lane);
     }
-  }, []);
+  }, [isEliminated]);
 
   const handleTilePointerUp = useCallback((noteId: string, lane: number) => {
+    if (isEliminated) return;
     if (engineRef.current) {
       engineRef.current.handleDirectTileUp(noteId, lane);
     }
-  }, []);
+  }, [isEliminated]);
+
+  const handleLanePointerDown = useCallback((lane: number) => {
+    if (isEliminated) return;
+    if (engineRef.current) {
+      engineRef.current.handleLaneInput(lane);
+    }
+  }, [isEliminated]);
 
   const handlePointerLeaveArea = useCallback(() => {
     if (engineRef.current) {
@@ -252,33 +256,50 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
     reducedMotion,
     onTilePointerDown: handleTilePointerDown,
     onTilePointerUp: handleTilePointerUp,
+    onLanePointerDown: handleLanePointerDown,
     onPointerLeaveArea: handlePointerLeaveArea,
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#090a0f] flex flex-col">
-      {/* Opponent bar */}
+    <div className="relative w-full min-h-screen bg-[#090a0f] flex flex-col select-none overflow-hidden">
+      {/* Live Opponent Status Bar */}
       <div className="relative z-20 w-full">
         <OpponentStatusBar opponents={opponents} />
       </div>
 
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 pointer-events-none">
-        {/* Score */}
-        <div className="bg-black/60 border border-gray-800 rounded-xl px-3 py-1.5 pointer-events-none">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">Score</p>
-          <p className="text-lg font-black text-white tabular-nums">
-            {scoreState.score.toLocaleString()}
-          </p>
+      {/* Dynamic Hit Effects, Combo Fire & Perfect Streak Overlay */}
+      <GameplayEffectsOverlay
+        latestJudgement={latestJudgement}
+        combo={scoreState.combo}
+        currentPerfectStreak={scoreState.currentPerfectStreak ?? 0}
+        reducedMotion={reducedMotion}
+      />
+
+      {/* Realtime Competitor HUD */}
+      <div className="absolute top-12 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 pointer-events-none">
+        {/* Score & Rank */}
+        <div className="bg-black/70 border border-gray-800 rounded-xl px-3 py-1.5 pointer-events-none flex items-center gap-2.5 backdrop-blur-md">
+          <div>
+            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Score</p>
+            <p className="text-lg font-black text-white tabular-nums font-mono">
+              {scoreState.score.toLocaleString()}
+            </p>
+          </div>
+          {isLeading && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/80 text-amber-300 text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(251,191,36,0.6)]">
+              <Crown className="w-3 h-3 text-amber-400 fill-amber-400" />
+              <span>#1 Leading</span>
+            </div>
+          )}
         </div>
 
         {/* Combo + Stars */}
         <div className="flex items-center gap-2">
-          <div className="bg-black/60 border border-gray-800 rounded-xl px-3 py-1.5 text-center">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Combo</p>
-            <p className="text-lg font-black text-amber-400 tabular-nums">x{scoreState.combo}</p>
+          <div className="bg-black/70 border border-gray-800 rounded-xl px-3 py-1.5 text-center backdrop-blur-md">
+            <p className="text-[9px] text-gray-400 uppercase tracking-widest">Combo</p>
+            <p className="text-lg font-black text-amber-400 tabular-nums font-mono">x{scoreState.combo}</p>
           </div>
-          <div className="bg-black/60 border border-gray-800 rounded-xl px-2 py-1.5 flex gap-0.5">
+          <div className="bg-black/70 border border-gray-800 rounded-xl px-2 py-1.5 flex gap-0.5 backdrop-blur-md">
             {[1, 2, 3].map((s) => (
               <Star
                 key={s}
@@ -289,21 +310,33 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
         </div>
 
         {/* Accuracy */}
-        <div className="bg-black/60 border border-gray-800 rounded-xl px-3 py-1.5 pointer-events-none">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">Acc</p>
-          <p className="text-lg font-black text-cyan-400 tabular-nums">
+        <div className="bg-black/70 border border-gray-800 rounded-xl px-3 py-1.5 pointer-events-none backdrop-blur-md">
+          <p className="text-[9px] text-gray-400 uppercase tracking-widest">Acc</p>
+          <p className="text-lg font-black text-cyan-400 tabular-nums font-mono">
             {scoreState.runAccuracy.toFixed(1)}%
           </p>
         </div>
       </div>
 
-      {/* Countdown overlay */}
+      {/* Synchronized Countdown Overlay */}
       {countdown !== null && countdown > 0 && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="text-center">
-            <Zap className="w-10 h-10 text-amber-400 mx-auto mb-2" />
-            <p className="text-7xl font-black text-white tabular-nums">{countdown}</p>
-            <p className="text-sm text-gray-400 mt-2">Synchronized start…</p>
+            <Zap className="w-10 h-10 text-amber-400 mx-auto mb-2 animate-bounce" />
+            <p className="text-7xl font-black text-white tabular-nums font-mono">{countdown}</p>
+            <p className="text-sm text-gray-400 mt-2 font-bold uppercase tracking-wider">Synchronized Match Start…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Non-Disruptive Elimination Banner */}
+      {isEliminated && (
+        <div className="absolute top-28 inset-x-0 z-40 flex justify-center pointer-events-none">
+          <div className="px-4 py-2 rounded-2xl bg-rose-950/80 border border-rose-500/60 text-white flex items-center gap-2 backdrop-blur-md shadow-2xl animate-pulse">
+            <Eye className="w-4 h-4 text-rose-400" />
+            <span className="text-xs font-black uppercase tracking-wider">
+              Run Interrupted • Spectating Active Room Match
+            </span>
           </div>
         </div>
       )}
@@ -318,11 +351,11 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
       </div>
 
       {/* Volume control */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 bg-black/60 border border-gray-800 rounded-xl px-3 py-1.5">
+      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 bg-black/70 border border-gray-800 rounded-xl px-3 py-1.5 backdrop-blur-md">
         <button
           onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
           aria-label={volume > 0 ? 'Mute' : 'Unmute'}
-          className="text-gray-400 hover:text-amber-400 transition"
+          className="text-gray-400 hover:text-amber-400 transition cursor-pointer"
         >
           {volume > 0 ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4 text-rose-400" />}
         </button>
@@ -330,7 +363,7 @@ export const RoomGameContainer: React.FC<RoomGameContainerProps> = ({
           type="range" min="0" max="1" step="0.05" value={volume}
           onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
           aria-label="Volume"
-          className="w-16 h-1.5 bg-gray-700 rounded"
+          className="w-16 h-1.5 bg-gray-700 rounded cursor-pointer accent-amber-500"
         />
       </div>
     </div>

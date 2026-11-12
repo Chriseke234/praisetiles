@@ -47,10 +47,11 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   onMainMenu,
   onOpenAuth,
 }) => {
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, stats } = useAuth();
   const [copiedShare, setCopiedShare] = useState(false);
 
   const isVictory = result.completed;
+  const isPractice = Boolean(result.isPractice);
   const elapsedMin = Math.floor(result.elapsedTime / 60);
   const elapsedSec = Math.floor(result.elapsedTime % 60);
   const formattedElapsed = `${elapsedMin}:${elapsedSec.toString().padStart(2, '0')}`;
@@ -59,8 +60,13 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   const songSec = Math.floor(result.songDuration % 60);
   const formattedSongDuration = `${songMin}:${songSec.toString().padStart(2, '0')}`;
 
+  // Personal Best Comparison
+  const isNewBestScore = !isPractice && result.score > (stats?.bestScore ?? 0) && (stats?.bestScore ?? 0) > 0;
+  const isNewBestCombo = !isPractice && result.highestCombo > (stats?.highestCombo ?? 0) && (stats?.highestCombo ?? 0) > 0;
+
   // Calculate Rank grade
   const getRank = (accuracy: number, completed: boolean) => {
+    if (isPractice) return { grade: 'P', color: 'from-emerald-400 to-teal-600', label: 'Practice' };
     if (!completed) return { grade: 'B', color: 'from-amber-500 to-amber-700', label: 'Unfinished' };
     if (accuracy >= 98) return { grade: 'S+', color: 'from-amber-300 via-amber-400 to-yellow-500', label: 'Divine' };
     if (accuracy >= 95) return { grade: 'S', color: 'from-amber-400 to-amber-600', label: 'Flawless' };
@@ -121,30 +127,45 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               </span>
               <span>&bull;</span>
               <span>{formattedSongDuration} Hymn Duration</span>
+              {isPractice && (
+                <>
+                  <span>&bull;</span>
+                  <span className="uppercase text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
+                    Non-Competitive Practice
+                  </span>
+                </>
+              )}
             </p>
           </div>
 
           {/* Result Status Banner */}
           <div className="flex items-center gap-3">
-            <div
-              className={`px-4 py-2 rounded-2xl flex items-center gap-2 border font-black text-xs sm:text-sm uppercase tracking-wide shadow-md ${
-                isVictory
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                  : 'bg-rose-500/20 border-rose-500/50 text-rose-300'
-              }`}
-            >
-              {isVictory ? (
-                <>
-                  <Award className="w-4 h-4 text-amber-400" />
-                  <span>Cleared</span>
-                </>
-              ) : (
-                <>
-                  <AlertOctagon className="w-4 h-4 text-rose-400" />
-                  <span>Interrupted</span>
-                </>
-              )}
-            </div>
+            {isPractice ? (
+              <div className="px-4 py-2 rounded-2xl flex items-center gap-2 border border-emerald-500/50 bg-emerald-500/20 text-emerald-300 font-black text-xs sm:text-sm uppercase tracking-wide shadow-md">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>Practice Finished</span>
+              </div>
+            ) : (
+              <div
+                className={`px-4 py-2 rounded-2xl flex items-center gap-2 border font-black text-xs sm:text-sm uppercase tracking-wide shadow-md ${
+                  isVictory
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'bg-rose-500/20 border-rose-500/50 text-rose-300'
+                }`}
+              >
+                {isVictory ? (
+                  <>
+                    <Award className="w-4 h-4 text-amber-400" />
+                    <span>Cleared</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertOctagon className="w-4 h-4 text-rose-400" />
+                    <span>Interrupted</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Share Result Button */}
             <button
@@ -246,9 +267,15 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               <span className="text-xs uppercase tracking-widest text-gray-400 font-bold block">
                 Final Score
               </span>
-              <p className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 tracking-tight text-glow-gold">
+              <p className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 tracking-tight text-glow-gold font-mono">
                 {result.score.toLocaleString()}
               </p>
+              {isNewBestScore && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/80 text-amber-300 text-xs font-black uppercase tracking-wider shadow-[0_0_15px_rgba(251,191,36,0.6)] animate-bounce">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>New Personal Best!</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -260,7 +287,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 <Target className="w-3.5 h-3.5 text-cyan-400" />
                 Accuracy
               </span>
-              <p className="text-2xl font-black text-cyan-300 mt-0.5">
+              <p className="text-2xl font-black text-cyan-300 mt-0.5 font-mono">
                 {result.accuracy.toFixed(1)}%
               </p>
               <span className="text-[10px] text-gray-500">
@@ -274,20 +301,34 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 <Flame className="w-3.5 h-3.5 text-emerald-400" />
                 Max Streak
               </span>
-              <p className="text-2xl font-black text-emerald-400 mt-0.5">
+              <p className="text-2xl font-black text-emerald-400 mt-0.5 font-mono">
                 {result.highestCombo}x
               </p>
-              <span className="text-[10px] text-gray-500">Consecutive hit streak</span>
+              <span className="text-[10px] text-gray-500">
+                {isNewBestCombo ? 'Personal record combo!' : 'Consecutive hit streak'}
+              </span>
+            </div>
+
+            {/* Perfect Streak */}
+            <div className="p-4 rounded-2xl bg-[#171329]/80 border border-gray-800 text-left">
+              <span className="text-[10px] uppercase font-bold text-purple-300 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+                Highest Perfect Streak
+              </span>
+              <p className="text-2xl font-black text-pink-300 mt-0.5 font-mono">
+                {result.highestPerfectStreak ?? 0}x
+              </p>
+              <span className="text-[10px] text-gray-500">Consecutive Perfects</span>
             </div>
 
             {/* XP Award */}
-            {xpEarned > 0 && (
+            {xpEarned > 0 && !isPractice && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left">
                 <span className="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <Award className="w-3.5 h-3.5 text-amber-400" />
                   Progression XP
                 </span>
-                <p className="text-2xl font-black text-amber-300 mt-0.5">
+                <p className="text-2xl font-black text-amber-300 mt-0.5 font-mono">
                   +{xpEarned} XP
                 </p>
                 <span className="text-[10px] text-amber-400/70">Synced to Profile</span>
@@ -296,8 +337,8 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           </div>
         </div>
 
-        {/* PERFORMANCE BREAKDOWN: Genuine Hit Grade Statistics Grid */}
-        <div className="my-6 space-y-2">
+        {/* PERFORMANCE BREAKDOWN: Genuine Hit Grade Statistics Grid & Sustain Bonuses */}
+        <div className="my-6 space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 text-left">
             Timing &amp; Accuracy Breakdown
           </h3>
@@ -305,7 +346,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             {/* PERFECT */}
             <div className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/30 text-left">
               <span className="text-[10px] font-bold uppercase text-purple-300">Perfect (&plusmn;50ms)</span>
-              <p className="text-xl font-black text-white mt-0.5">
+              <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.perfectCount ?? result.notesHit}
               </p>
               <span className="text-[10px] text-purple-400 font-semibold">100 Pts each</span>
@@ -314,7 +355,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             {/* GREAT */}
             <div className="p-3.5 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 text-left">
               <span className="text-[10px] font-bold uppercase text-cyan-300">Great (&plusmn;100ms)</span>
-              <p className="text-xl font-black text-white mt-0.5">
+              <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.greatCount ?? 0}
               </p>
               <span className="text-[10px] text-cyan-400 font-semibold">75 Pts each</span>
@@ -323,7 +364,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             {/* GOOD */}
             <div className="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 text-left">
               <span className="text-[10px] font-bold uppercase text-amber-300">Good (&plusmn;150ms)</span>
-              <p className="text-xl font-black text-white mt-0.5">
+              <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.goodCount ?? 0}
               </p>
               <span className="text-[10px] text-amber-400 font-semibold">50 Pts each</span>
@@ -332,10 +373,31 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             {/* MISS */}
             <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-500/30 text-left">
               <span className="text-[10px] font-bold uppercase text-rose-300">Missed Notes</span>
-              <p className="text-xl font-black text-white mt-0.5">
+              <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.missCount ?? (result.totalNotes - result.notesHit)}
               </p>
-              <span className="text-[10px] text-rose-400 font-semibold">0 Pts / Run Fail</span>
+              <span className="text-[10px] text-rose-400 font-semibold">
+                {isPractice ? 'Practice feedback' : '0 Pts / Shield loss'}
+              </span>
+            </div>
+          </div>
+
+          {/* Long Note Sustain Bonus Bar */}
+          <div className="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 flex items-center justify-between text-left">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              <div>
+                <span className="text-xs font-bold text-white block">Sustained Long Tile Bonuses</span>
+                <span className="text-[10px] text-gray-400">
+                  {result.completedSustainsCount ?? 0} sustained notes fully completed
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-black text-amber-300 font-mono">
+                +{result.sustainBonusPoints ?? 0} PTS
+              </span>
+              <span className="text-[10px] text-amber-400/80 block uppercase font-bold">+250 per completion</span>
             </div>
           </div>
         </div>

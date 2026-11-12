@@ -14,6 +14,7 @@ import {
   calculateMatchXp,
   calculateLevelFromXp,
 } from '@/config/progression';
+import { updateChallengesOnMatch, evaluateAchievements } from '@/lib/progression/challenges';
 
 interface AuthContextType {
   user: { id: string; email?: string } | null;
@@ -218,6 +219,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       result.score,
       result.elapsedTime
     );
+
+    // Progression: Update daily/weekly challenges & achievement badges
+    try {
+      updateChallengesOnMatch(result);
+      evaluateAchievements(result, {
+        totalSongsPlayed: stats?.totalAttempts,
+        highestPerfectStreak: Math.max(stats?.highestPerfectStreak ?? 0, result.highestPerfectStreak ?? 0),
+        totalSustainsCompleted: (stats?.totalSustainsCompleted ?? 0) + (result.completedSustainsCount ?? 0),
+        playedPiano: result.instrument === 'piano' || (stats?.pianoAttempts ?? 0) > 0,
+        playedGuitar: result.instrument === 'guitar' || (stats?.guitarAttempts ?? 0) > 0,
+      });
+    } catch {}
 
     // 1. If User is Authenticated and Supabase is configured:
     const supabase = getSupabaseBrowserClient();

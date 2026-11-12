@@ -119,7 +119,7 @@ export function estimateTempoFromFlux(
  * and enforcing the Long-Tile Mutual Exclusivity Rule.
  */
 export function mapCandidatesToNotes(
-  candidates: Array<{ time: number; confidence: number; bandType?: 'low' | 'high' | 'full' }>,
+  candidates: Array<{ time: number; confidence: number; bandType?: 'low' | 'high' | 'full'; sustainDurationSec?: number }>,
   duration: number,
   star1End: number,
   star2End: number,
@@ -164,18 +164,23 @@ export function mapCandidatesToNotes(
     }
     const gap = nextCandidateTime - time;
 
+    // Genuine sustain: must have sufficient gap and detected acoustic persistence or strong downbeat anchor
+    const hasAcousticSustain = Boolean(candidate.sustainDurationSec && candidate.sustainDurationSec >= 0.5);
     const isLongSustainEligible =
-      gap >= 0.9 &&
-      candidate.confidence >= 0.65 &&
+      gap >= 0.85 &&
+      candidate.confidence >= 0.60 &&
       time + 0.6 <= duration &&
-      (noteIndex % 4 === 0 || bandType === 'low');
+      (hasAcousticSustain || (noteIndex % 4 === 0 && gap >= 1.0) || (bandType === 'low' && gap >= 1.1));
 
     let noteType: 'short' | 'long' = 'short';
     let sustainDuration: number | undefined = undefined;
 
     if (isLongSustainEligible) {
       noteType = 'long';
-      sustainDuration = Math.min(1.8, Math.max(0.6, Math.round((gap - 0.25) * 10) / 10));
+      const rawDur = candidate.sustainDurationSec
+        ? Math.min(candidate.sustainDurationSec, gap - 0.2)
+        : Math.round((gap - 0.25) * 10) / 10;
+      sustainDuration = Math.min(1.8, Math.max(0.6, Math.round(rawDur * 10) / 10));
       activeSustainUntil = time + sustainDuration + 0.15;
     }
 
@@ -189,9 +194,20 @@ export function mapCandidatesToNotes(
     const laneChoices = allowedLanes.filter((l) => l !== lastLane);
     const validChoices = laneChoices.length > 0 ? laneChoices : allowedLanes;
 
-    const bandOffset = bandType === 'low' ? 0 : bandType === 'high' ? 2 : 1;
-    const pickIdx = (Math.floor(time * 10) + noteIndex + bandOffset) % validChoices.length;
-    const lane = validChoices[pickIdx];
+    // Special rhythm patterns: alternating patterns on fast runs, downbeat anchoring on kicks
+    let lane: number;
+    if (bandType === 'low' && validChoices.includes(0)) {
+      // Anchoring kick on outer/inner lane alternation
+      lane = (noteIndex % 2 === 0 && validChoices.includes(0)) ? 0 : validChoices[noteIndex % validChoices.length];
+    } else if (gap < 0.35 && validChoices.length >= 2) {
+      // Fast alternating pattern (e.g. ping-pong between lanes)
+      const altPick = (lastLane + 2) % validChoices.length;
+      lane = validChoices[altPick] ?? validChoices[0];
+    } else {
+      const bandOffset = bandType === 'low' ? 0 : bandType === 'high' ? 2 : 1;
+      const pickIdx = (Math.floor(time * 10) + noteIndex + bandOffset) % validChoices.length;
+      lane = validChoices[pickIdx];
+    }
 
     notes.push({
       id: `n-${noteIndex++}`,
@@ -352,11 +368,31 @@ export function generateRhythmMapFromAudio(
         // Calculate confidence score (normalized difference above threshold)
         const confidence = Math.min(1.0, (val - threshold) / (localStdDev > 0 ? localStdDev * 2 : 1.0));
 
+        // Evaluate genuine acoustic energy persistence across subsequent frames (up to 1.6s)
+        let sustainedFrames = 0;
+        const maxSustainFrames = Math.min(Math.floor(1.6 / hopDuration), numFrames - f - 1);
+        const minSustainFrames = Math.floor(0.45 / hopDuration);
+        const energyFloor = Math.max(0.001, (lowEnergies[f] + highEnergies[f]) * 0.35);
+
+        for (let s = 1; s <= maxSustainFrames; s++) {
+          const combinedPostEnergy = lowEnergies[f + s] + highEnergies[f + s];
+          if (combinedPostEnergy >= energyFloor) {
+            sustainedFrames++;
+          } else {
+            break;
+          }
+        }
+
+        const sustainDurationSec = sustainedFrames >= minSustainFrames
+          ? Math.min(1.8, Math.max(0.6, Math.round(sustainedFrames * hopDuration * 10) / 10))
+          : undefined;
+
         candidateOnsets.push({
           time,
           energy: val,
           confidence: Math.round(confidence * 100) / 100,
           bandType: bandIdentities[f],
+          sustainDurationSec,
         });
       }
     }

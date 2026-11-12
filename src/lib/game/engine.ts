@@ -32,6 +32,7 @@ export interface GameEngineCallbacks {
   onScoreUpdate: (state: ScoreState) => void;
   onNoteJudged: (noteId: string, grade: HitGrade, lane: number) => void;
   onSustainProgress?: (noteId: string, progress: number, state: SustainState) => void;
+  onSustainCompleted?: (noteId: string, bonusPoints: number) => void;
   onRunFailed: (result: RunResult) => void;
   onRunCompleted: (result: RunResult) => void;
   onLaneTapEffect?: (lane: number) => void;
@@ -45,6 +46,8 @@ export class GameEngine {
   private callbacks: GameEngineCallbacks;
   private isRunning: boolean = false;
   private isTerminated: boolean = false;
+  private isPaused: boolean = false;
+  private isPractice: boolean = false;
   private currentAudioTime: number = 0;
   private notesHitCount: number = 0;
   private calibrationOffsetSec: number = 0;
@@ -104,10 +107,36 @@ export class GameEngine {
   public start(): void {
     this.isRunning = true;
     this.isTerminated = false;
+    this.isPaused = false;
   }
 
   public stop(): void {
     this.isRunning = false;
+    this.isPaused = false;
+  }
+
+  public pause(): void {
+    if (this.isRunning && !this.isTerminated) {
+      this.isPaused = true;
+    }
+  }
+
+  public resume(): void {
+    if (this.isRunning && !this.isTerminated) {
+      this.isPaused = false;
+    }
+  }
+
+  public getIsPaused(): boolean {
+    return this.isPaused;
+  }
+
+  public setPracticeMode(enabled: boolean): void {
+    this.isPractice = enabled;
+  }
+
+  public getIsPractice(): boolean {
+    return this.isPractice;
   }
 
   public getNotes(): readonly Note[] {
@@ -142,7 +171,7 @@ export class GameEngine {
    * Called every animation frame with current audio clock time in seconds.
    */
   public update(currentTime: number): void {
-    if (!this.isRunning || this.isTerminated) return;
+    if (!this.isRunning || this.isTerminated || this.isPaused) return;
 
     this.currentAudioTime = currentTime;
     const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
@@ -165,6 +194,7 @@ export class GameEngine {
           this.scoreState = applySustainCompletionToScoreState(this.scoreState);
           this.callbacks.onScoreUpdate(this.scoreState);
           this.callbacks.onSustainProgress?.(note.id, 1.0, 'completed');
+          this.callbacks.onSustainCompleted?.(note.id, GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS);
           this.activeSustainNote = null;
         } else {
           // Early release penalty: combo resets, progress halts
@@ -196,6 +226,7 @@ export class GameEngine {
           this.scoreState = applySustainCompletionToScoreState(this.scoreState);
           this.callbacks.onScoreUpdate(this.scoreState);
           this.callbacks.onSustainProgress?.(note.id, 1.0, 'completed');
+          this.callbacks.onSustainCompleted?.(note.id, GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS);
           this.activeSustainNote = null;
         }
       }
@@ -214,8 +245,8 @@ export class GameEngine {
         this.callbacks.onScoreUpdate(this.scoreState);
         this.callbacks.onNoteJudged(note.id, 'MISS', note.lane);
 
-        // 3-Strike Life System: Fail only if all shields are lost
-        if ((this.scoreState.shieldsRemaining ?? 0) <= 0) {
+        // 3-Strike Life System: Fail only if all shields are lost (Practice mode never fails)
+        if (!this.isPractice && (this.scoreState.shieldsRemaining ?? 0) <= 0) {
           this.handleFailure('MISSED_NOTE');
           return;
         }
@@ -240,7 +271,7 @@ export class GameEngine {
    *   therefore never calls this method.
    */
   public handleDirectTileDown(noteId: string, lane: number): void {
-    if (!this.isRunning || this.isTerminated) return;
+    if (!this.isRunning || this.isTerminated || this.isPaused) return;
 
     const now = this.currentAudioTime;
 
@@ -330,6 +361,7 @@ export class GameEngine {
         this.scoreState = applySustainCompletionToScoreState(this.scoreState);
         this.callbacks.onScoreUpdate(this.scoreState);
         this.callbacks.onSustainProgress?.(note.id, 1.0, 'completed');
+        this.callbacks.onSustainCompleted?.(note.id, GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS);
       } else {
         // Released early — apply penalty
         note.sustainState = 'released_early';
@@ -346,7 +378,7 @@ export class GameEngine {
    * Note: The primary in-game UI input path for Piano-Tiles gameplay is handleDirectTileDown.
    */
   public handlePointerDown(lane: number): void {
-    if (!this.isRunning || this.isTerminated) return;
+    if (!this.isRunning || this.isTerminated || this.isPaused) return;
     this.laneHeld[lane] = true;
     this.handleLaneInput(lane, true);
   }
@@ -355,7 +387,7 @@ export class GameEngine {
    * Continuous pointer move across lanes: sets laneHeld and evaluates tap on newly entered lane.
    */
   public handlePointerMoveAcross(lane: number): void {
-    if (!this.isRunning || this.isTerminated) return;
+    if (!this.isRunning || this.isTerminated || this.isPaused) return;
     if (!this.laneHeld[lane]) {
       this.laneHeld[lane] = true;
       this.handleLaneInput(lane, true);
@@ -381,6 +413,7 @@ export class GameEngine {
         this.scoreState = applySustainCompletionToScoreState(this.scoreState);
         this.callbacks.onScoreUpdate(this.scoreState);
         this.callbacks.onSustainProgress?.(note.id, 1.0, 'completed');
+        this.callbacks.onSustainCompleted?.(note.id, GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS);
       } else {
         note.sustainState = 'released_early';
         this.scoreState = applyEarlyReleaseToScoreState(this.scoreState);
@@ -408,7 +441,7 @@ export class GameEngine {
    * This method is no longer called from tile views — only internally.
    */
   public handleLaneInput(lane: number, isDirectContact: boolean = true): void {
-    if (!this.isRunning || this.isTerminated) return;
+    if (!this.isRunning || this.isTerminated || this.isPaused) return;
 
     const now = this.currentAudioTime;
 
@@ -486,10 +519,10 @@ export class GameEngine {
       return;
     }
 
-    // Leniency: Empty lane tap breaks combo and consumes 1 shield (fails only on 0 shields)
+    // Leniency: Empty lane tap breaks combo and consumes 1 shield (fails only on 0 shields, practice mode never fails)
     this.scoreState = applyMissToScoreState(this.scoreState);
     this.callbacks.onScoreUpdate(this.scoreState);
-    if ((this.scoreState.shieldsRemaining ?? 0) <= 0) {
+    if (!this.isPractice && (this.scoreState.shieldsRemaining ?? 0) <= 0) {
       this.handleFailure('INCORRECT_TAP');
     }
   }
@@ -518,6 +551,10 @@ export class GameEngine {
       greatCount: this.scoreState.greatCount,
       goodCount: this.scoreState.goodCount,
       missCount: this.scoreState.missCount,
+      highestPerfectStreak: this.scoreState.maxPerfectStreak ?? 0,
+      sustainBonusPoints: this.scoreState.sustainBonusPoints ?? 0,
+      completedSustainsCount: this.scoreState.completedSustainsCount ?? 0,
+      isPractice: this.isPractice,
     };
 
     this.callbacks.onRunFailed(result);
@@ -547,6 +584,10 @@ export class GameEngine {
       greatCount: this.scoreState.greatCount,
       goodCount: this.scoreState.goodCount,
       missCount: this.scoreState.missCount,
+      highestPerfectStreak: this.scoreState.maxPerfectStreak ?? 0,
+      sustainBonusPoints: this.scoreState.sustainBonusPoints ?? 0,
+      completedSustainsCount: this.scoreState.completedSustainsCount ?? 0,
+      isPractice: this.isPractice,
     };
 
     this.callbacks.onRunCompleted(result);

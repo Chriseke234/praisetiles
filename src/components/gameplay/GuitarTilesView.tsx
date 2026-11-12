@@ -112,13 +112,6 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                   className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-amber-500/35 via-yellow-500/15 to-transparent pointer-events-none animate-pulse"
                 />
               )}
-
-              {/* Desktop Keycap Badge (D, F, J, K) */}
-              {keyLabel && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center justify-center w-7 h-7 rounded-lg bg-amber-950/80 border border-amber-600/40 text-[11px] font-mono font-bold text-yellow-300 pointer-events-none shadow-md backdrop-blur-xs">
-                  {keyLabel}
-                </div>
-              )}
             </div>
           );
         })}
@@ -151,7 +144,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
               </div>
 
               <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap button or press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 font-mono text-[9px]">SPACE</kbd> to begin
+                Tap button to begin • Direct touch & tap on frets
               </p>
             </div>
           </div>
@@ -242,13 +235,32 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                   </div>
                 </div>
 
-                {/* Head Guitar Fret Tile */}
-                <div className="w-full h-12 sm:h-14 rounded-b-xl border-2 border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 flex items-center justify-center relative shadow-lg pointer-events-none">
-                  <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
-                    <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
-                  </div>
+                {/* Head Guitar Fret Tile with Progress */}
+                <div className={`w-full h-12 sm:h-14 rounded-b-xl border-2 flex items-center justify-center relative shadow-lg pointer-events-none transition-colors ${
+                  isHolding
+                    ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-600 shadow-[0_0_20px_rgba(250,204,21,1)]'
+                    : 'border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700'
+                }`}>
+                  {/* Sustain Hold Progress Fill */}
                   {isHolding && (
-                    <div className="absolute inset-0 bg-yellow-200/50 animate-ping rounded-b-xl pointer-events-none" />
+                    <div
+                      className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-yellow-400/60 to-white/30 transition-all pointer-events-none"
+                      style={{ height: `${Math.round(progress * 100)}%` }}
+                    />
+                  )}
+
+                  {isHolding ? (
+                    <span className="relative z-10 text-xs font-mono font-black text-amber-950 drop-shadow-[0_0_4px_#fff]">
+                      {Math.round(progress * 100)}%
+                    </span>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
+                    </div>
+                  )}
+
+                  {isHolding && (
+                    <div className="absolute inset-0 bg-yellow-200/50 animate-pulse rounded-b-xl pointer-events-none" />
                   )}
                 </div>
               </div>

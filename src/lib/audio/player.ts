@@ -96,6 +96,35 @@ export class GameAudioPlayer {
   }
 
   /**
+   * Pauses audio playback and stores current playback position.
+   */
+  public pause(): number {
+    if (!this.isPlaying) return this.pauseOffset;
+    const current = this.getCurrentTime();
+    this.pauseOffset = current;
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.onended = null;
+        this.sourceNode.stop();
+        this.sourceNode.disconnect();
+      } catch {
+        // Node may already be stopped
+      }
+      this.sourceNode = null;
+    }
+    this.isPlaying = false;
+    return this.pauseOffset;
+  }
+
+  /**
+   * Resumes audio playback from current pauseOffset.
+   */
+  public async resume(onEnded?: () => void): Promise<void> {
+    if (this.isPlaying) return;
+    await this.play(this.pauseOffset, onEnded);
+  }
+
+  /**
    * Stops audio playback and disconnects nodes.
    */
   public stop(): void {

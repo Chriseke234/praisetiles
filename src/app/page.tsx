@@ -8,6 +8,7 @@ import { MainMenu } from '@/components/menu/MainMenu';
 import { AudioUploadModal } from '@/components/setup/AudioUploadModal';
 import { RhythmMapPreview } from '@/components/setup/RhythmMapPreview';
 import { GameContainer } from '@/components/gameplay/GameContainer';
+import { PracticeGameContainer } from '@/components/gameplay/PracticeGameContainer';
 import { ResultScreen } from '@/components/gameplay/ResultScreen';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ProfileModal } from '@/components/profile/ProfileModal';
@@ -22,6 +23,7 @@ function PraiseTilesGame() {
   const [rhythmMap, setRhythmMap] = useState<RhythmMap | null>(null);
   const [songTitle, setSongTitle] = useState<string>('Praise Anthem');
   const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [isPractice, setIsPractice] = useState<boolean>(false);
   const [xpEarned, setXpEarned] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0.8);
   const [reducedMotion, setReducedMotion] = useState<boolean>(false);
@@ -41,8 +43,9 @@ function PraiseTilesGame() {
   }, [volume, audioPlayer]);
 
   // Handle Instrument selection from Menu
-  const handleSelectInstrument = (chosen: InstrumentType) => {
+  const handleSelectInstrument = (chosen: InstrumentType, practiceMode?: boolean) => {
     setInstrument(chosen);
+    setIsPractice(Boolean(practiceMode));
     if (audioBuffer && rhythmMap) {
       setView('PREVIEW');
     } else {
@@ -75,14 +78,15 @@ function PraiseTilesGame() {
 
   // Handle run finished (either completed or failed)
   const handleRunFinished = async (result: RunResult) => {
-    setRunResult(result);
+    const finalResult = { ...result, isPractice };
+    setRunResult(finalResult);
     setView('RESULT');
 
-    // Asynchronously record match to persistence pipeline
-    if (rhythmMap) {
+    // Practice mode does NOT record to competitive rankings or tournaments
+    if (rhythmMap && !isPractice) {
       try {
         const submission = await recordMatch(
-          result,
+          finalResult,
           songTitle,
           rhythmMap.audioFingerprint
         );
@@ -90,6 +94,8 @@ function PraiseTilesGame() {
       } catch {
         // Non-blocking
       }
+    } else {
+      setXpEarned(0);
     }
   };
 
@@ -155,16 +161,29 @@ function PraiseTilesGame() {
       )}
 
       {view === 'PLAYING' && rhythmMap && (
-        <GameContainer
-          map={rhythmMap}
-          instrument={instrument}
-          audioPlayer={audioPlayer}
-          volume={volume}
-          onVolumeChange={setVolume}
-          reducedMotion={reducedMotion}
-          onRunFinished={handleRunFinished}
-          onExit={() => setView('MENU')}
-        />
+        isPractice ? (
+          <PracticeGameContainer
+            map={rhythmMap}
+            instrument={instrument}
+            audioPlayer={audioPlayer}
+            volume={volume}
+            onVolumeChange={setVolume}
+            reducedMotion={reducedMotion}
+            onPracticeFinished={handleRunFinished}
+            onExit={() => setView('MENU')}
+          />
+        ) : (
+          <GameContainer
+            map={rhythmMap}
+            instrument={instrument}
+            audioPlayer={audioPlayer}
+            volume={volume}
+            onVolumeChange={setVolume}
+            reducedMotion={reducedMotion}
+            onRunFinished={handleRunFinished}
+            onExit={() => setView('MENU')}
+          />
+        )
       )}
 
       {view === 'RESULT' && runResult && (

@@ -41,6 +41,8 @@ export interface PlayerStats {
   guitarAttempts: number;
   guitarCompleted: number;
   guitarBestScore: number;
+  highestPerfectStreak?: number;
+  totalSustainsCompleted?: number;
   updatedAt: string;
 }
 

@@ -375,31 +375,88 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             ))}
           </div>
 
-          {/* Tab 1: Overview */}
+          {/* Tab 1: Overview & Personal Records */}
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
-                <span className="text-[10px] uppercase text-gray-400 font-bold">Total Attempts</span>
-                <p className="text-xl font-extrabold text-white mt-1">{totalAttempts}</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Total Attempts</span>
+                  <p className="text-xl font-extrabold text-white mt-1 font-mono">{totalAttempts}</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Completed</span>
+                  <p className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">{completedSongs}</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Best Score</span>
+                  <p className="text-xl font-extrabold text-amber-400 mt-1 font-mono">{bestScore.toLocaleString()}</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Best Accuracy</span>
+                  <p className="text-xl font-extrabold text-cyan-400 mt-1 font-mono">{bestAccuracy.toFixed(1)}%</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-gray-400 font-bold">Max Combo</span>
+                  <p className="text-xl font-extrabold text-rose-400 mt-1 font-mono flex items-center gap-1">
+                    <Zap className="w-4 h-4 fill-rose-400" />
+                    {highestCombo}x
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+                  <span className="text-[10px] uppercase text-purple-400 font-bold">Perfect Streak</span>
+                  <p className="text-xl font-extrabold text-pink-300 mt-1 font-mono flex items-center gap-1">
+                    <Sparkles className="w-4 h-4 text-pink-400" />
+                    {stats?.highestPerfectStreak ?? 0}x
+                  </p>
+                </div>
               </div>
-              <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
-                <span className="text-[10px] uppercase text-gray-400 font-bold">Completed</span>
-                <p className="text-xl font-extrabold text-emerald-400 mt-1">{completedSongs}</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
-                <span className="text-[10px] uppercase text-gray-400 font-bold">Best Completed Score</span>
-                <p className="text-xl font-extrabold text-amber-400 mt-1">{bestScore.toLocaleString()}</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
-                <span className="text-[10px] uppercase text-gray-400 font-bold">Best Completed Acc</span>
-                <p className="text-xl font-extrabold text-cyan-400 mt-1">{bestAccuracy.toFixed(1)}%</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800 col-span-2 sm:col-span-2">
-                <span className="text-[10px] uppercase text-gray-400 font-bold">Highest Combo</span>
-                <p className="text-xl font-extrabold text-rose-400 mt-1 flex items-center gap-1">
-                  <Zap className="w-4 h-4 fill-rose-400" />
-                  {highestCombo}x consecutive hits
-                </p>
+
+              {/* Achievement Badges Showcase */}
+              <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5" />
+                    Praise Achievement Badges
+                  </h4>
+                  <span className="text-[10px] text-gray-500 font-mono">8 Milestones</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'first_performance', name: 'First Performance', desc: 'Complete 1 song' },
+                    { id: 'rhythm_keeper', name: 'Rhythm Keeper', desc: '90%+ accuracy' },
+                    { id: 'perfect_touch', name: 'Perfect Touch', desc: '50 Perfect hits' },
+                    { id: 'combo_master', name: 'Combo Master', desc: '75+ combo' },
+                    { id: 'worship_warrior', name: 'Worship Warrior', desc: 'Complete 10 songs' },
+                    { id: 'instrument_explorer', name: 'Explorer', desc: 'Piano & Guitar' },
+                    { id: 'sustain_master', name: 'Sustain Master', desc: '20 sustained notes' },
+                    { id: 'perfect_streak', name: 'Perfect Streak', desc: '25x Perfects' },
+                  ].map((b) => {
+                    const isUnlocked = completedSongs >= 1 && (
+                      b.id === 'first_performance' ||
+                      (b.id === 'rhythm_keeper' && bestAccuracy >= 90) ||
+                      (b.id === 'combo_master' && highestCombo >= 75) ||
+                      (b.id === 'worship_warrior' && completedSongs >= 10) ||
+                      (b.id === 'perfect_streak' && (stats?.highestPerfectStreak ?? 0) >= 25)
+                    );
+
+                    return (
+                      <div
+                        key={b.id}
+                        className={`p-2 rounded-xl border text-center transition ${
+                          isUnlocked
+                            ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                            : 'bg-gray-950/40 border-gray-800/80 text-gray-600 opacity-60'
+                        }`}
+                        title={b.desc}
+                      >
+                        <Award className={`w-5 h-5 mx-auto mb-1 ${isUnlocked ? 'text-amber-400' : 'text-gray-600'}`} />
+                        <span className="text-[10px] font-bold block truncate">{b.name}</span>
+                        <span className="text-[8px] block opacity-75">{isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

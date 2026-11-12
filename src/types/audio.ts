@@ -59,6 +59,7 @@ export interface OnsetCandidate {
   energy: number;
   confidence: number;
   bandType: 'low' | 'high' | 'full';
+  sustainDurationSec?: number;
 }
 
 export interface AudioAnalysisDiagnostics {

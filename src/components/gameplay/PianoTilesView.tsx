@@ -99,13 +99,6 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
               {isActive && (
                 <div className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-amber-400/30 via-purple-500/15 to-transparent pointer-events-none animate-pulse" />
               )}
-
-              {/* Desktop Keyboard Keycap Badge (D, F, J, K) */}
-              {keyLabel && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center justify-center w-7 h-7 rounded-lg bg-purple-950/80 border border-purple-400/30 text-[11px] font-mono font-bold text-amber-300 pointer-events-none shadow-md backdrop-blur-xs">
-                  {keyLabel}
-                </div>
-              )}
             </div>
           );
         })}
@@ -142,7 +135,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
               </div>
 
               <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap button or press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 font-mono text-[9px]">SPACE</kbd> to begin
+                Tap button to begin • Direct touch & tap on tiles
               </p>
             </div>
           </div>
@@ -231,17 +224,35 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                   </div>
                 </div>
 
-                {/* Rounded Contact Head Cap with Concentric Touch Circles */}
+                {/* Rounded Contact Head Cap with Concentric Touch Circles & Sustain Progress */}
                 <div
-                  className="w-full h-12 sm:h-14 rounded-b-2xl border-2 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 border-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.9)] flex items-center justify-center relative overflow-hidden pointer-events-none"
+                  className={`w-full h-12 sm:h-14 rounded-b-2xl border-2 flex items-center justify-center relative overflow-hidden pointer-events-none transition-colors ${
+                    isHolding
+                      ? 'border-amber-300 bg-gradient-to-b from-amber-500 via-purple-700 to-purple-950 shadow-[0_0_25px_rgba(251,191,36,0.9)]'
+                      : 'border-purple-300 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 shadow-[0_0_20px_rgba(168,85,247,0.9)]'
+                  }`}
                 >
-                  {/* Target Ripple / Bullseye Rings */}
-                  <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-[0_0_8px_#ffffff] pointer-events-none">
-                    <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#ffffff] pointer-events-none" />
-                  </div>
+                  {/* Visual Sustain Hold Progress Fill */}
+                  {isHolding && (
+                    <div
+                      className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-amber-400/50 to-yellow-300/30 transition-all pointer-events-none"
+                      style={{ height: `${Math.round(progress * 100)}%` }}
+                    />
+                  )}
+
+                  {/* Target Ripple / Bullseye Rings or Progress Percent */}
+                  {isHolding ? (
+                    <span className="relative z-10 text-xs font-mono font-black text-amber-200 drop-shadow-[0_0_8px_#000]">
+                      {Math.round(progress * 100)}%
+                    </span>
+                  ) : (
+                    <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-[0_0_8px_#ffffff] pointer-events-none">
+                      <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#ffffff] pointer-events-none" />
+                    </div>
+                  )}
 
                   {isHolding && (
-                    <div className="absolute inset-0 bg-white/30 animate-ping rounded-b-2xl pointer-events-none" />
+                    <div className="absolute inset-0 bg-white/30 animate-pulse rounded-b-2xl pointer-events-none" />
                   )}
                 </div>
               </div>

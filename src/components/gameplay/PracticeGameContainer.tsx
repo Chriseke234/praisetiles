@@ -8,9 +8,9 @@ import {
   ScoreState,
   HitGrade,
   Note,
+  PlayableAudioClock,
 } from '@/types/game';
 import { GameEngine } from '@/lib/game/engine';
-import { GameAudioPlayer } from '@/lib/audio/player';
 import { createInitialScoreState } from '@/lib/game/scoring';
 import { PianoTilesView } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
@@ -32,7 +32,7 @@ import {
 interface PracticeGameContainerProps {
   map: RhythmMap;
   instrument: InstrumentType;
-  audioPlayer: GameAudioPlayer;
+  audioPlayer: PlayableAudioClock;
   volume: number;
   onVolumeChange: (vol: number) => void;
   reducedMotion: boolean;
@@ -181,7 +181,9 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     setIsWaitingForStart(false);
 
     if (engineRef.current) {
-      await audioPlayer.ensureContext();
+      if (typeof audioPlayer.ensureContext === 'function') {
+        await audioPlayer.ensureContext();
+      }
       engineRef.current.start();
       await audioPlayer.play(0, () => {
         engineRef.current?.handleCompletion();

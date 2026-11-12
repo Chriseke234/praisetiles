@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { InstrumentType, RhythmMap, RunResult } from '@/types/game';
+import { InstrumentType, RhythmMap, RunResult, PlayableAudioClock } from '@/types/game';
 import { GameAudioPlayer } from '@/lib/audio/player';
+import { YouTubeAudioPlayer } from '@/lib/audio/youtubePlayer';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { MainMenu } from '@/components/menu/MainMenu';
 import { AudioUploadModal } from '@/components/setup/AudioUploadModal';
@@ -36,17 +37,18 @@ function PraiseTilesGame() {
 
   // Audio player singleton using state initializer
   const [audioPlayer] = useState(() => new GameAudioPlayer());
+  const [activeAudioPlayer, setActiveAudioPlayer] = useState<PlayableAudioClock>(audioPlayer);
 
   // Sync volume changes
   useEffect(() => {
-    audioPlayer.setVolume(volume);
-  }, [volume, audioPlayer]);
+    activeAudioPlayer.setVolume(volume);
+  }, [volume, activeAudioPlayer]);
 
   // Handle Instrument selection from Menu
   const handleSelectInstrument = (chosen: InstrumentType, practiceMode?: boolean) => {
     setInstrument(chosen);
     setIsPractice(Boolean(practiceMode));
-    if (audioBuffer && rhythmMap) {
+    if (rhythmMap) {
       setView('PREVIEW');
     } else {
       setView('UPLOAD');
@@ -55,6 +57,7 @@ function PraiseTilesGame() {
 
   // Handle successful audio load and analysis
   const handleAudioReady = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
+    setActiveAudioPlayer(audioPlayer);
     setAudioBuffer(buffer);
     setRhythmMap(map);
     setSongTitle(title);
@@ -63,7 +66,26 @@ function PraiseTilesGame() {
 
   // Handle Quick Play (bypass preview straight to gameplay per GDD §4)
   const handleQuickPlay = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
+    setActiveAudioPlayer(audioPlayer);
     setAudioBuffer(buffer);
+    setRhythmMap(map);
+    setSongTitle(title);
+    setView('PLAYING');
+  };
+
+  // Handle YouTube Music setup
+  const handleYouTubeReady = (ytPlayer: YouTubeAudioPlayer, map: RhythmMap, title: string) => {
+    setActiveAudioPlayer(ytPlayer);
+    setAudioBuffer(null);
+    setRhythmMap(map);
+    setSongTitle(title);
+    setView('PREVIEW');
+  };
+
+  // Handle Quick Play for YouTube Music
+  const handleQuickPlayYouTube = (ytPlayer: YouTubeAudioPlayer, map: RhythmMap, title: string) => {
+    setActiveAudioPlayer(ytPlayer);
+    setAudioBuffer(null);
     setRhythmMap(map);
     setSongTitle(title);
     setView('PLAYING');
@@ -71,7 +93,7 @@ function PraiseTilesGame() {
 
   // Start gameplay
   const handleStartGame = () => {
-    if (audioBuffer && rhythmMap) {
+    if (rhythmMap) {
       setView('PLAYING');
     }
   };
@@ -99,9 +121,9 @@ function PraiseTilesGame() {
     }
   };
 
-  // Instant retry reusing existing audio buffer and rhythm map
+  // Instant retry reusing existing audio buffer/stream and rhythm map
   const handleRetry = () => {
-    if (audioBuffer && rhythmMap) {
+    if (rhythmMap) {
       setView('PLAYING');
     } else {
       setView('UPLOAD');
@@ -115,7 +137,7 @@ function PraiseTilesGame() {
     } else {
       setInstrument((prev) => (prev === 'piano' ? 'guitar' : 'piano'));
     }
-    if (audioBuffer && rhythmMap) {
+    if (rhythmMap) {
       setView('PREVIEW');
     } else {
       setView('UPLOAD');
@@ -141,7 +163,9 @@ function PraiseTilesGame() {
           instrument={instrument}
           audioPlayer={audioPlayer}
           onAudioReady={handleAudioReady}
+          onYouTubeReady={handleYouTubeReady}
           onQuickPlay={handleQuickPlay}
+          onQuickPlayYouTube={handleQuickPlayYouTube}
           onBack={() => setView('MENU')}
         />
       )}
@@ -165,7 +189,7 @@ function PraiseTilesGame() {
           <PracticeGameContainer
             map={rhythmMap}
             instrument={instrument}
-            audioPlayer={audioPlayer}
+            audioPlayer={activeAudioPlayer}
             volume={volume}
             onVolumeChange={setVolume}
             reducedMotion={reducedMotion}
@@ -176,7 +200,7 @@ function PraiseTilesGame() {
           <GameContainer
             map={rhythmMap}
             instrument={instrument}
-            audioPlayer={audioPlayer}
+            audioPlayer={activeAudioPlayer}
             volume={volume}
             onVolumeChange={setVolume}
             reducedMotion={reducedMotion}

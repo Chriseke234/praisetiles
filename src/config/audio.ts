@@ -25,6 +25,8 @@ export const AUDIO_CONFIG = {
   // Playability & Map Validation Thresholds
   VALIDATION: {
     MIN_TOTAL_NOTES: 15,
+    MIN_DURATION_SEC: 30,   // GDD minimum: 30 seconds
+    MAX_DURATION_SEC: 300,  // GDD maximum: 5 minutes
     MAX_LANE_CONCENTRATION_PERCENT: 55.0, // Max % of notes on any single lane
     MAX_DIFFICULTY_SPIKE_RATIO: 3.0,     // Max note density increase between consecutive 5s windows
     SILENCE_THRESHOLD_RMS: 0.008,        // Below this RMS level is considered musical silence

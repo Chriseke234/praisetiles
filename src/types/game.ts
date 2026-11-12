@@ -102,3 +102,14 @@ export interface AudioValidationResult {
   isNearSilent?: boolean;
   isClipped?: boolean;
 }
+
+export interface PlayableAudioClock {
+  play(offset?: number, onEnded?: () => void): Promise<void>;
+  pause(): number;
+  resume(onEnded?: () => void): Promise<void>;
+  stop(): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  setVolume(vol: number): void;
+  ensureContext?(): Promise<any>;
+}

@@ -528,3 +528,133 @@ export function generateRhythmMapFromAudio(
     createdAt: new Date().toISOString(),
   };
 }
+
+/**
+ * Generates a progressive 3-star beat-aligned rhythm map for a given duration and song title
+ * (e.g. for YouTube tracks or streaming audio where direct AudioBuffer PCM is unavailable).
+ */
+export function generateRhythmMapForDuration(
+  songTitle: string,
+  rawDuration: number,
+  estimatedBpm: number = 120,
+  difficulty: DifficultyProfileName = 'standard'
+): RhythmMapV2 {
+  const MIN_DURATION = 30;
+  const MAX_DURATION = 300;
+  // Clamp duration to valid gameplay range (30s to 300s)
+  const duration = Math.min(
+    MAX_DURATION,
+    Math.max(MIN_DURATION, rawDuration || 60)
+  );
+
+  const star1End = duration * 0.33;
+  const star2End = duration * 0.66;
+  const star3End = duration;
+
+  const bpm = estimatedBpm >= 60 && estimatedBpm <= 200 ? estimatedBpm : 120;
+  const beatInterval = 60 / bpm;
+
+  const notes: NoteV2[] = [];
+  let noteIndex = 0;
+  let lastLane = 0;
+  let t = 2.0; // 2s initial breathing room
+
+  while (t < duration - 1.0) {
+    const stage = t < star1End ? 1 : t < star2End ? 2 : 3;
+    // Escalating rhythm frequency per stage
+    const step = stage === 1 ? beatInterval * 1.5 : stage === 2 ? beatInterval : beatInterval * 0.75;
+    
+    // Lane distribution
+    const allowedLanes = stage === 1 ? [0, 1, 2] : [0, 1, 2, 3];
+    let lane = (lastLane + 1) % allowedLanes.length;
+    if (noteIndex % 3 === 0) {
+      lane = (lastLane + 2) % allowedLanes.length;
+    }
+    lastLane = lane;
+
+    // Introduce regular sustained long tiles
+    const isLong = noteIndex > 0 && noteIndex % 6 === 0;
+    const sustainDur = isLong ? Math.min(1.8, Math.max(0.6, Math.round(step * 1.4 * 10) / 10)) : undefined;
+
+    notes.push({
+      id: `note-stream-${noteIndex}-${t.toFixed(3)}`,
+      time: Math.round(t * 1000) / 1000,
+      lane: allowedLanes[lane],
+      hit: false,
+      grade: null,
+      type: isLong ? 'long' : 'short',
+      duration: sustainDur,
+      sustainProgress: isLong ? 0 : undefined,
+      sustainState: isLong ? 'idle' : undefined,
+    });
+
+    noteIndex++;
+    t += step;
+  }
+
+  // Ensure minimum total notes
+  while (notes.length < AUDIO_CONFIG.VALIDATION.MIN_TOTAL_NOTES && t < duration + 10) {
+    t += 0.8;
+    notes.push({
+      id: `note-stream-fill-${notes.length}`,
+      time: Math.round(t * 1000) / 1000,
+      lane: notes.length % 4,
+      hit: false,
+      grade: null,
+      type: 'short',
+    });
+  }
+
+  const fingerprint = `pt-stream-${Math.round(duration)}s-${encodeURIComponent(songTitle.slice(0, 16))}`;
+  const mapMetadata = {
+    version: '2.0.0' as const,
+    audioFingerprint: fingerprint,
+    duration,
+    totalNotes: notes.length,
+    notes,
+  };
+  const checksum = calculateMapChecksum(mapMetadata);
+
+  const laneCounts = [0, 0, 0, 0];
+  for (const n of notes) {
+    laneCounts[n.lane]++;
+  }
+
+  const laneDistribution: [number, number, number, number] = [
+    Math.round((laneCounts[0] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[1] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[2] / Math.max(1, notes.length)) * 1000) / 10,
+    Math.round((laneCounts[3] / Math.max(1, notes.length)) * 1000) / 10,
+  ];
+
+  const avgNps = Math.round((notes.length / Math.max(1, duration)) * 10) / 10;
+
+  const metrics: RhythmMapMetrics = {
+    avgNotesPerSecond: avgNps,
+    peakNotesPerSecond: Math.round((bpm / 60) * 10) / 10,
+    minNoteIntervalSec: Math.round(beatInterval * 0.75 * 1000) / 1000,
+    laneDistribution,
+    estimatedBpm: bpm,
+  };
+
+  return {
+    version: '2.0.0',
+    mapId: `map-${fingerprint}-${difficulty}`,
+    algorithmVersion: AUDIO_CONFIG.ALGORITHM_VERSION,
+    audioFingerprint: fingerprint,
+    songTitle,
+    duration,
+    totalNotes: notes.length,
+    notes,
+    stages: {
+      star1End: Math.round(star1End * 100) / 100,
+      star2End: Math.round(star2End * 100) / 100,
+      star3End: Math.round(star3End * 100) / 100,
+    },
+    difficultyProfile: difficulty,
+    metrics,
+    validationStatus: 'valid',
+    integrityChecksum: checksum,
+    createdAt: new Date().toISOString(),
+  };
+}

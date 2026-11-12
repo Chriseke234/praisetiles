@@ -30,6 +30,7 @@ import {
   BookOpen,
   Info,
   ShieldAlert,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocial } from '@/lib/social/SocialContext';
@@ -38,11 +39,23 @@ import { getGemTier } from '@/config/progression';
 import dynamic from 'next/dynamic';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { PraiseMascot } from '@/components/common/PraiseMascot';
-import { FEATURED_GOSPEL_SONGS, GospelSongItem } from '@/config/gospelSongs';
 import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
 import { NotificationDrawer } from '@/components/social/NotificationDrawer';
 import { useRouter } from 'next/navigation';
+
+/** Inline YouTube logo SVG — lucide-react does not export a Youtube icon in this version. */
+const YoutubeSvg: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path d="M21.593 7.203a2.506 2.506 0 0 0-1.762-1.766C18.265 5.007 12 5 12 5s-6.264-.007-7.831.404a2.56 2.56 0 0 0-1.766 1.778c-.413 1.566-.417 4.814-.417 4.814s-.004 3.264.413 4.814c.23.857.905 1.534 1.762 1.766 1.582.43 7.83.437 7.83.437s6.265.007 7.831-.403a2.515 2.515 0 0 0 1.767-1.763c.414-1.565.417-4.812.417-4.812s.02-3.265-.413-4.826zM9.996 15.005l.005-6 5.207 3.005-5.212 2.995z" />
+  </svg>
+);
 
 // Lazy-loaded heavyweight modal components for bundle splitting
 const PublicRoomBrowser = dynamic(() => import('@/components/multiplayer/PublicRoomBrowser').then(m => m.PublicRoomBrowser), { ssr: false });
@@ -830,102 +843,108 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </div>
             </section>
 
-            {/* SECTION B: FEATURED GOSPEL MUSIC */}
+            {/* SECTION B: MUSIC STREAMING & PRAISE STUDIO */}
             <section id="featured-music" className="w-full space-y-6 text-left scroll-mt-24">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-gray-800/80 pb-3">
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
                     <Headphones className="w-6 h-6 text-purple-400" />
-                    <span>Featured Gospel Music</span>
+                    <span>Praise Music Studio</span>
                   </h2>
                   <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                    Curated hymns and worship compositions mapped for 4-lane rhythm mastery.
+                    Stream millions of worship songs, synchronize YouTube gospel videos, or upload your personal audio files.
                   </p>
                 </div>
-                <span className="text-xs text-gray-400">
-                  {FEATURED_GOSPEL_SONGS.length} Sanctuary Tracks Available
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                  Global Streaming Enabled
                 </span>
               </div>
 
-              {/* Music Catalogue Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {FEATURED_GOSPEL_SONGS.map((song) => (
-                  <div
-                    key={song.id}
-                    className="group relative rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-purple-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 overflow-hidden flex flex-col justify-between"
-                  >
-                    {/* Song Cover Artwork with Vinyl Edge Preview */}
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-950">
-                      <img
-                        src={song.coverUrl}
-                        alt={song.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#110e1f] via-transparent to-black/30" />
-
-                      {/* Difficulty and Mode Badges */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          song.difficulty === 'Easy' ? 'bg-emerald-500/80 text-black' :
-                          song.difficulty === 'Medium' ? 'bg-amber-500/80 text-black' :
-                          song.difficulty === 'Hard' ? 'bg-orange-500/80 text-white' :
-                          'bg-rose-500/80 text-white'
-                        }`}>
-                          {song.difficulty}
-                        </span>
-                        {song.isTrending && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/80 text-white">
-                            Trending
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Duration Pill */}
-                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-sm text-[10px] font-mono text-gray-300 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-gray-400" />
-                        <span>{song.duration}</span>
-                      </div>
+              {/* Music Studio Showcase Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* 1. Search & Stream Previews */}
+                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-purple-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                      <Search className="w-6 h-6" />
                     </div>
-
-                    {/* Metadata & Actions */}
-                    <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-base font-black text-white group-hover:text-amber-300 transition line-clamp-1">
-                          {song.title}
-                        </h3>
-                        <p className="text-xs text-purple-300 font-medium line-clamp-1 mt-0.5">
-                          {song.artist}
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">
-                          {song.description}
-                        </p>
-                      </div>
-
-                      <div className="pt-3 border-t border-gray-800/80 flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <Headphones className="w-3.5 h-3.5 text-gray-500" />
-                            {song.playCount.toLocaleString()}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Heart className="w-3.5 h-3.5 text-rose-400/80" />
-                            {song.likes.toLocaleString()}
-                          </span>
-                        </div>
-
-                        {/* Play Button */}
-                        <button
-                          onClick={() => onSelectInstrument('piano')}
-                          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition-transform duration-200 hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-md shadow-amber-500/20"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-black stroke-black" />
-                          <span>Play</span>
-                        </button>
-                      </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                        Online Search &amp; Stream
+                      </span>
+                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-purple-300 transition">
+                        Streaming Music Search
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                        Instant discovery across global gospel artists: Maverick City, Kirk Franklin, Elevation, CeCe Winans, and more. Audition previews and play instantly.
+                      </p>
                     </div>
                   </div>
-                ))}
+
+                  <button
+                    onClick={() => setShowInstrumentSelect(true)}
+                    className="mt-6 w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/30"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Search Tracks</span>
+                  </button>
+                </div>
+
+                {/* 2. YouTube Music Direct */}
+                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-red-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                      <YoutubeSvg className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+                        YouTube IFrame Clock
+                      </span>
+                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-red-300 transition">
+                        YouTube Music Player
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                        Paste any YouTube or YouTube Music worship video URL. Our 60fps microsecond-interpolated clock synchronizes gameplay with the video stream.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowInstrumentSelect(true)}
+                    className="mt-6 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-red-600/30"
+                  >
+                    <YoutubeSvg className="w-3.5 h-3.5" />
+                    <span>Play YouTube</span>
+                  </button>
+                </div>
+
+                {/* 3. Audio File Upload & Synth */}
+                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-amber-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/10">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                      <Music className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                        Local Studio &amp; Synth
+                      </span>
+                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-amber-300 transition">
+                        Upload &amp; Demo Synth
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                        Upload custom MP3, WAV, or AAC audio files with browser multi-band transient detection, or synthesize an instant 120 BPM royalty-free praise hymn.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowInstrumentSelect(true)}
+                    className="mt-6 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-black stroke-black" />
+                    <span>Open Studio</span>
+                  </button>
+                </div>
               </div>
             </section>
 

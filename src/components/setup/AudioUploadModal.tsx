@@ -199,16 +199,49 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
     setAuditionTrackId(track.id);
   };
 
-  // Select search track -> download preview, decode PCM, analyze real rhythm map, play
+  // Select search track -> resolve full-length track via YouTube engine, or fallback to preview
   const handleSelectSearchTrack = async (track: SearchTrack) => {
     stopAudition();
     setErrorMessage(null);
     setIsProcessing(true);
-    setProcessingStatus(`Streaming "${track.title}" preview audio...`);
+    setProcessingStatus(`Finding full performance audio for "${track.title}"...`);
 
+    const title = `${track.title} - ${track.artist}`;
+
+    // 1. PRIMARY: Attempt to resolve full-length track on YouTube / YouTube Music
     try {
+      const searchParam = encodeURIComponent(`${track.title} ${track.artist}`);
+      const ytRes = await fetch(`/api/music/youtube?q=${searchParam}`);
+      const ytData = await ytRes.json();
+
+      if (ytRes.ok && (ytData.success || ytData.videoId || ytData.track?.videoId)) {
+        const videoId = ytData.videoId || ytData.track?.videoId;
+        const durationSec = Math.max(90, track.durationSec || ytData.durationSec || 180);
+
+        setProcessingStatus(`Initializing full YouTube audio for "${track.title}"...`);
+        const ytPlayer = new YouTubeAudioPlayer(videoId);
+
+        setProcessingStatus('Generating full beat-aligned 4-lane chart...');
+        await new Promise((r) => setTimeout(r, 120));
+
+        const map = generateRhythmMapForDuration(title, durationSec, 128);
+        setIsProcessing(false);
+
+        if (skipPreview && onQuickPlayYouTube) {
+          onQuickPlayYouTube(ytPlayer, map, title);
+        } else if (onYouTubeReady) {
+          onYouTubeReady(ytPlayer, map, title);
+        }
+        return;
+      }
+    } catch {
+      // Non-blocking fallback to preview stream below
+    }
+
+    // 2. FALLBACK: Stream 30s preview audio stream via audio proxy
+    try {
+      setProcessingStatus('Loading preview audio stream...');
       const ctx = await audioPlayer.ensureContext();
-      setProcessingStatus('Fetching audio stream...');
 
       // Proxy via backend to prevent browser CORS blocks ("Failed to fetch")
       const proxyUrl = track.previewUrl.startsWith('http')
@@ -240,7 +273,6 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
       setProcessingStatus('Analyzing acoustic transients and generating 4-lane chart...');
       await new Promise((r) => setTimeout(r, 120));
 
-      const title = `${track.title} - ${track.artist}`;
       const map = generateRhythmMapFromAudio(decodedBuffer, title);
 
       audioPlayer.setBuffer(decodedBuffer);

@@ -4,7 +4,7 @@ import React, { memo } from 'react';
 
 export const AtmosphericBackground: React.FC = memo(() => {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0 [contain:strict] transform-gpu">
       {/* Base Deep Purple Ethereal Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#160b33] via-[#0e0722] to-[#070312]" />
 

@@ -67,7 +67,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
 
   return (
     <div
-      className="relative w-full h-full max-w-lg mx-auto flex flex-col justify-between overflow-hidden bg-transparent select-none border-x border-purple-900/40 touch-none"
+      className="relative w-full h-full max-w-lg mx-auto flex flex-col justify-between overflow-hidden bg-[#0c071d] select-none border-x border-purple-900/50 shadow-2xl touch-none [isolation:isolate] [contain:paint_layout]"
       onPointerLeave={() => {
         onPointerLeaveArea();
       }}
@@ -178,7 +178,9 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                   top: `${tailTopPercent}%`,
                   height: `${currentTailHeight}%`,
                   minHeight: '48px',
+                  transform: 'translate3d(0, 0, 0)',
                   willChange: 'top, height',
+                  backfaceVisibility: 'hidden',
                   touchAction: 'none',
                 }}
                 onPointerDown={(e) => {
@@ -207,10 +209,10 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
               >
                 {/* Luminous Sustain Tail Body with Central Dotted Guide */}
                 <div
-                  className={`w-full h-full rounded-t-xl border-x border-t relative overflow-hidden transition-all pointer-events-none ${
+                  className={`w-full h-full rounded-t-xl border-x border-t relative overflow-hidden pointer-events-none ${
                     isHolding
-                      ? 'bg-gradient-to-t from-purple-600/90 via-purple-800/70 to-purple-950/40 border-purple-300 shadow-[0_0_25px_rgba(192,132,252,0.9)]'
-                      : 'bg-gradient-to-t from-purple-700/80 via-purple-900/60 to-purple-950/30 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                      ? 'bg-gradient-to-t from-purple-600/90 via-purple-800/70 to-purple-950/40 border-purple-300 shadow-[0_0_18px_rgba(192,132,252,0.8)]'
+                      : 'bg-gradient-to-t from-purple-700/80 via-purple-900/60 to-purple-950/30 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.4)]'
                   }`}
                 >
                   {/* Central Luminous Dot Guideline */}
@@ -218,24 +220,24 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
 
                   {/* Periodic Luminous Guide Rings along Tail */}
                   <div className="absolute inset-0 flex flex-col justify-around items-center pointer-events-none opacity-40">
-                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-[0_0_6px_#fff]" />
-                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-[0_0_6px_#fff]" />
-                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-[0_0_6px_#fff]" />
+                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-sm" />
+                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-sm" />
+                    <div className="w-2 h-2 rounded-full bg-purple-200 shadow-sm" />
                   </div>
                 </div>
 
                 {/* Rounded Contact Head Cap with Concentric Touch Circles & Sustain Progress */}
                 <div
-                  className={`w-full h-12 sm:h-14 rounded-b-2xl border-2 flex items-center justify-center relative overflow-hidden pointer-events-none transition-colors ${
+                  className={`w-full h-12 sm:h-14 rounded-b-2xl border-2 flex items-center justify-center relative overflow-hidden pointer-events-none ${
                     isHolding
-                      ? 'border-amber-300 bg-gradient-to-b from-amber-500 via-purple-700 to-purple-950 shadow-[0_0_25px_rgba(251,191,36,0.9)]'
-                      : 'border-purple-300 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 shadow-[0_0_20px_rgba(168,85,247,0.9)]'
+                      ? 'border-amber-300 bg-gradient-to-b from-amber-500 via-purple-700 to-purple-950 shadow-[0_0_18px_rgba(251,191,36,0.8)]'
+                      : 'border-purple-300 bg-gradient-to-b from-purple-700 via-purple-800 to-purple-950 shadow-[0_0_14px_rgba(168,85,247,0.7)]'
                   }`}
                 >
                   {/* Visual Sustain Hold Progress Fill */}
                   {isHolding && (
                     <div
-                      className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-amber-400/50 to-yellow-300/30 transition-all pointer-events-none"
+                      className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-amber-400/50 to-yellow-300/30 pointer-events-none"
                       style={{ height: `${Math.round(progress * 100)}%` }}
                     />
                   )}
@@ -246,13 +248,13 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                       {Math.round(progress * 100)}%
                     </span>
                   ) : (
-                    <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-[0_0_8px_#ffffff] pointer-events-none">
-                      <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#ffffff] pointer-events-none" />
+                    <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-sm pointer-events-none">
+                      <div className="w-2 h-2 rounded-full bg-white pointer-events-none" />
                     </div>
                   )}
 
                   {isHolding && (
-                    <div className="absolute inset-0 bg-white/30 animate-pulse rounded-b-2xl pointer-events-none" />
+                    <div className="absolute inset-0 bg-white/20 animate-pulse rounded-b-2xl pointer-events-none" />
                   )}
                 </div>
               </div>
@@ -272,8 +274,9 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                 left: `${lanePercent}%`,
                 width: '25%',
                 top: `${topPercent}%`,
-                transform: 'translateY(-100%)',
-                willChange: 'top',
+                transform: 'translateY(-100%) translateZ(0)',
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
                 touchAction: 'none',
               }}
               onPointerDown={(e) => {
@@ -285,10 +288,10 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
               className="px-1 z-20 cursor-pointer h-28 sm:h-36"
             >
               <div
-                className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-100 ${
+                className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden ${
                   isHitBurst
-                    ? 'border-amber-200 bg-gradient-to-b from-amber-300 via-amber-400 to-yellow-500 shadow-[0_0_35px_rgba(251,191,36,0.95)] scale-105'
-                    : 'border-amber-400/90 bg-gradient-to-b from-[#2d1659] via-[#160c2e] to-[#080413] shadow-[0_4px_25px_rgba(251,191,36,0.4)]'
+                    ? 'border-amber-200 bg-gradient-to-b from-amber-300 via-amber-400 to-yellow-500 shadow-[0_0_24px_rgba(251,191,36,0.9)] scale-105 transition-transform duration-75'
+                    : 'border-amber-400/80 bg-gradient-to-b from-[#2d1659] via-[#160c2e] to-[#080413] shadow-[0_4px_16px_rgba(251,191,36,0.35)]'
                 }`}
               >
                 {/* Surface Sheen */}
@@ -296,15 +299,15 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
 
                 {/* Tactile Hit Pulse Ping */}
                 {isHitBurst && (
-                  <div className="absolute inset-0 bg-white/50 animate-ping rounded-2xl pointer-events-none" />
+                  <div className="absolute inset-0 bg-white/40 animate-ping rounded-2xl pointer-events-none" />
                 )}
 
                 {/* Central Radiant Golden Rhythm Pill */}
                 <div
-                  className={`h-2.5 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] pointer-events-none mb-1 transition-all ${
+                  className={`h-2.5 rounded-full pointer-events-none mb-1 ${
                     isHitBurst
-                      ? 'w-3/4 bg-white shadow-[0_0_16px_#ffffff]'
-                      : 'w-1/2 bg-gradient-to-r from-amber-400 via-yellow-300 to-purple-400'
+                      ? 'w-3/4 bg-white shadow-[0_0_12px_#ffffff]'
+                      : 'w-1/2 bg-gradient-to-r from-amber-400 via-yellow-300 to-purple-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'
                   }`}
                 />
                 <div className="w-1/4 h-1 bg-amber-400/50 rounded-full pointer-events-none" />

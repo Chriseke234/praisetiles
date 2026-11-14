@@ -342,4 +342,68 @@ describe('6. Progression, Challenges & Login Streaks', () => {
     expect(streak.currentStreak).toBeGreaterThanOrEqual(1);
     expect(streak.todayRewardXp).toBe(50);
   });
+
+  describe('5. First-Tile Single-Tap & Dynamic High-Speed Early Buffer', () => {
+    it('accurately hits candidate note at high speed with scaled early buffer', () => {
+      const mockMap: RhythmMap = {
+        version: '2.0.0',
+        songTitle: 'Fast Speed Test',
+        stages: { star1End: 30, star2End: 60, star3End: 90 },
+        audioFingerprint: 'fast-speed-test',
+        duration: 90,
+        totalNotes: 2,
+        notes: [
+          { id: 'fast-note-1', time: 70.0, lane: 1, type: 'short', hit: false }, // in Star 3 (>66% of 90s = 60s)
+          { id: 'fast-note-2', time: 80.0, lane: 2, type: 'short', hit: false },
+        ],
+      };
+
+      const judgedNotes: string[] = [];
+      const engine = new GameEngine(mockMap, 'piano', {
+        onScoreUpdate: vi.fn(),
+        onNoteJudged: (noteId) => judgedNotes.push(noteId),
+        onRunFailed: vi.fn(),
+        onRunCompleted: vi.fn(),
+      });
+
+      engine.start();
+      // At currentAudioTime = 69.35s (timeUntilHit = 0.65s ahead of note at 70.0s):
+      // With dynamic earlyBufferSec (~0.70s), tapping lane 1 registers the hit cleanly on first tap!
+      engine.update(69.35);
+      engine.handleLaneInput(1);
+
+      expect(judgedNotes).toContain('fast-note-1');
+      expect(engine.getScoreState().missCount).toBe(0);
+    });
+
+    it('immediately starts and scores first tile on initial tap without double-tapping', () => {
+      const mockMap: RhythmMap = {
+        version: '2.0.0',
+        songTitle: 'First Tile Test',
+        stages: { star1End: 20, star2End: 40, star3End: 60 },
+        audioFingerprint: 'first-tile-test',
+        duration: 60,
+        totalNotes: 1,
+        notes: [{ id: 'first-note-0', time: 1.0, lane: 0, type: 'short', hit: false }],
+      };
+
+      const judgedNotes: string[] = [];
+      const engine = new GameEngine(mockMap, 'piano', {
+        onScoreUpdate: vi.fn(),
+        onNoteJudged: (noteId) => judgedNotes.push(noteId),
+        onRunFailed: vi.fn(),
+        onRunCompleted: vi.fn(),
+      });
+
+      // Synchronous start
+      engine.start();
+      expect(engine.getIsRunning()).toBe(true);
+
+      // Single initial tap scores immediately
+      engine.handleDirectTileDown('first-note-0', 0);
+      expect(judgedNotes).toEqual(['first-note-0']);
+      expect(engine.getScoreState().totalEncountered).toBe(1);
+      expect(engine.getScoreState().greatCount).toBe(1);
+    });
+  });
 });

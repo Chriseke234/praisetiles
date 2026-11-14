@@ -117,11 +117,13 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
           setLatestJudgement(null);
         }, 600);
 
-        setNotes((prevNotes) =>
-          prevNotes.map((n) =>
-            n.id === noteId ? ({ ...n, hit: true, grade, hitTimestamp: Date.now() } as Note) : n
-          )
-        );
+        setNotes((prevNotes) => {
+          const idx = prevNotes.findIndex((n) => n.id === noteId);
+          if (idx === -1) return prevNotes;
+          const updated = [...prevNotes];
+          updated[idx] = { ...updated[idx], hit: true, grade };
+          return updated;
+        });
       },
       onSustainCompleted: (_noteId, bonusPoints) => {
         setSustainBonus({ key: Date.now(), points: bonusPoints });
@@ -181,10 +183,11 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     setIsWaitingForStart(false);
 
     if (engineRef.current) {
+      // Start engine synchronously so isRunning is immediately active for input handling
+      engineRef.current.start();
       if (typeof audioPlayer.ensureContext === 'function') {
         await audioPlayer.ensureContext();
       }
-      engineRef.current.start();
       await audioPlayer.play(0, () => {
         engineRef.current?.handleCompletion();
       });
@@ -256,6 +259,10 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       if (isPaused || resumeCountdown !== null) return;
       if (isWaitingForStart) {
         handleStartGame();
+        // Immediately hit the tapped first tile so it never requires a double-tap
+        if (engineRef.current) {
+          engineRef.current.handleDirectTileDown(noteId, lane);
+        }
         return;
       }
       if (engineRef.current) {
@@ -280,6 +287,10 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       if (isPaused || resumeCountdown !== null) return;
       if (isWaitingForStart) {
         handleStartGame();
+        // Immediately register lane hit on kickoff
+        if (engineRef.current) {
+          engineRef.current.handleLaneInput(lane);
+        }
         return;
       }
       if (engineRef.current) {

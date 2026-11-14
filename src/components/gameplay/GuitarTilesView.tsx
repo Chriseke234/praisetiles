@@ -195,26 +195,17 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  try {
-                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                  } catch {}
                   onTilePointerDown(note.id, note.lane);
                 }}
                 onPointerUp={(e) => {
                   e.stopPropagation();
-                  try {
-                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                  } catch {}
                   onTilePointerUp(note.id, note.lane);
                 }}
                 onPointerCancel={(e) => {
                   e.stopPropagation();
-                  try {
-                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                  } catch {}
                   onTilePointerUp(note.id, note.lane);
                 }}
-                className="px-2 z-20 flex flex-col justify-end cursor-pointer"
+                className="px-2 z-20 flex flex-col justify-end cursor-pointer py-2 -my-2"
               >
                 {/* Luminous Sustain Fret Beam Body */}
                 <div
@@ -290,7 +281,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                 // Instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              className="px-2 z-20 cursor-pointer h-28 sm:h-36"
+              className="px-2 z-20 cursor-pointer h-28 sm:h-36 py-2 -my-2"
             >
               <div
                 className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-100 ${

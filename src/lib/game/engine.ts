@@ -155,6 +155,10 @@ export class GameEngine {
     return this.instrument;
   }
 
+  public getIsRunning(): boolean {
+    return this.isRunning;
+  }
+
   public setInstrument(instrument: InstrumentType): void {
     this.instrument = instrument;
   }
@@ -457,8 +461,9 @@ export class GameEngine {
     }
 
     const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
-    // Buffer window allows early lane taps within 500ms to register as hits rather than empty-lane penalties
-    const earlyBufferSec = 0.500;
+    // Buffer window dynamically scales with approach time (capped at 0.70s) so fast scrolls register cleanly while distant taps (>0.70s) still correctly register as incorrect taps
+    const approachTime = this.getDynamicApproachTime();
+    const earlyBufferSec = Math.min(0.70, Math.max(0.50, approachTime * 0.45));
     // Apply user audio-visual calibration offset
     const adjustedTime = now - this.calibrationOffsetSec;
 
@@ -485,8 +490,8 @@ export class GameEngine {
       const diff = adjustedTime - candidateNote.time;
       let grade = getTimingJudgement(diff);
       if (!grade && diff < 0 && Math.abs(diff) <= earlyBufferSec) {
-        // Early tap caught in touch buffer
-        grade = 'GOOD';
+        // Early tap caught in touch buffer (award GREAT if in lower 60% of window, GOOD otherwise)
+        grade = Math.abs(diff) <= earlyBufferSec * 0.6 ? 'GREAT' : 'GOOD';
       }
       if (grade) {
         candidateNote.hit = true;

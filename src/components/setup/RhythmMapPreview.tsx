@@ -145,11 +145,11 @@ export const RhythmMapPreview: React.FC<RhythmMapPreviewProps> = ({
           </div>
         </div>
 
-        {/* Honest Analysis Note */}
-        <div className="mb-6 p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 flex items-start gap-2 text-[11px] text-cyan-200/80">
-          <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+        {/* Musical Sync Note */}
+        <div className="mb-6 p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 flex items-start gap-2 text-[11px] text-purple-200/80">
+          <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
           <p>
-            Beat-aligned transient analysis generated from audio waveform energy. Original audio playback speed is never altered.
+            Rhythm map synchronized to the musical beat and phrasing. Original song audio is preserved.
           </p>
         </div>
 

@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { X, Plus, LogIn, Lock, Loader2, AlertCircle, Zap, Users } from 'lucide-react';
+import { X, Plus, LogIn, Lock, Loader2, AlertCircle, Zap, Users, Trophy, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { InstrumentType } from '@/types/game';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ interface MultiplayerModalProps {
   onOpenAuth:          () => void;
   onOpenQuickPlay:     () => void;
   onOpenPublicLobbies: () => void;
+  onOpenTournaments?:  () => void;
 }
 
 type ModalView = 'main' | 'create' | 'join';
@@ -34,6 +35,7 @@ export const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
   onOpenAuth,
   onOpenQuickPlay,
   onOpenPublicLobbies,
+  onOpenTournaments,
 }) => {
   const { user, isSupabaseAvailable } = useAuth();
   const router = useRouter();
@@ -211,6 +213,33 @@ export const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
                   <p className="text-sm font-bold text-white">Join Code</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">Enter 8-character invite</p>
                 </div>
+              </button>
+
+              {/* Championship Tournaments */}
+              <button
+                onClick={() => {
+                  handleClose();
+                  onOpenTournaments?.();
+                }}
+                className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-purple-950/70 via-amber-950/40 to-gray-900 border border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10 transition group text-left shadow-lg"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>Championship Tournaments</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-300 uppercase shrink-0">
+                        Season 1
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-gray-300 mt-0.5 truncate">
+                      Single-elimination 8 & 16 player competitive brackets & standings
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-amber-400 group-hover:translate-x-1 transition shrink-0 ml-2" />
               </button>
             </div>
           )}

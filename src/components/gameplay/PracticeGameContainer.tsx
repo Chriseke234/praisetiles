@@ -51,6 +51,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   onExit,
 }) => {
   const [isWaitingForStart, setIsWaitingForStart] = useState(true);
+  const [startCountdown, setStartCountdown] = useState<number | null>(null);
   const [scoreState, setScoreState] = useState<ScoreState>(createInitialScoreState);
   const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
   const [notes, setNotes] = useState<readonly Note[]>(() =>
@@ -92,6 +93,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   const judgementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sustainBonusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Instantiate engine with Practice Mode enabled (No failure termination)
   const initEngine = useCallback(() => {
@@ -174,25 +176,41 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       if (judgementTimeoutRef.current) clearTimeout(judgementTimeoutRef.current);
       if (sustainBonusTimeoutRef.current) clearTimeout(sustainBonusTimeoutRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
       timeouts.forEach(clearTimeout);
     };
   }, [initEngine, audioPlayer]);
 
   const handleStartGame = useCallback(async () => {
-    if (!isWaitingForStart) return;
+    if (!isWaitingForStart || startCountdown !== null) return;
     setIsWaitingForStart(false);
 
-    if (engineRef.current) {
-      // Start engine synchronously so isRunning is immediately active for input handling
-      engineRef.current.start();
-      if (typeof audioPlayer.ensureContext === 'function') {
+    if (typeof audioPlayer.ensureContext === 'function') {
+      try {
         await audioPlayer.ensureContext();
-      }
-      await audioPlayer.play(0, () => {
-        engineRef.current?.handleCompletion();
-      });
+      } catch {}
     }
-  }, [isWaitingForStart, audioPlayer]);
+
+    setStartCountdown(3);
+    let count = 3;
+    if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
+
+    startCountdownIntervalRef.current = setInterval(async () => {
+      count -= 1;
+      if (count > 0) {
+        setStartCountdown(count);
+      } else {
+        if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
+        setStartCountdown(null);
+        if (engineRef.current) {
+          engineRef.current.start();
+        }
+        await audioPlayer.play(0, () => {
+          engineRef.current?.handleCompletion();
+        });
+      }
+    }, 700);
+  }, [isWaitingForStart, startCountdown, audioPlayer]);
 
   const handlePause = useCallback(() => {
     if (isWaitingForStart || isPaused) return;
@@ -230,7 +248,9 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
 
   const handleRestart = useCallback(() => {
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
     setResumeCountdown(null);
+    setStartCountdown(null);
     setIsPaused(false);
     setIsWaitingForStart(true);
     setScoreState(createInitialScoreState());
@@ -256,48 +276,40 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   // Direct touch/mouse handlers
   const handleTilePointerDown = useCallback(
     (noteId: string, lane: number) => {
-      if (isPaused || resumeCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
       if (isWaitingForStart) {
         handleStartGame();
-        // Immediately hit the tapped first tile so it never requires a double-tap
-        if (engineRef.current) {
-          engineRef.current.handleDirectTileDown(noteId, lane);
-        }
         return;
       }
       if (engineRef.current) {
         engineRef.current.handleDirectTileDown(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
+    [isPaused, resumeCountdown, startCountdown, isWaitingForStart, handleStartGame]
   );
 
   const handleTilePointerUp = useCallback(
     (noteId: string, lane: number) => {
-      if (isPaused || resumeCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
       if (engineRef.current) {
         engineRef.current.handleDirectTileUp(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown]
+    [isPaused, resumeCountdown, startCountdown]
   );
 
   const handleLanePointerDown = useCallback(
     (lane: number) => {
-      if (isPaused || resumeCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
       if (isWaitingForStart) {
         handleStartGame();
-        // Immediately register lane hit on kickoff
-        if (engineRef.current) {
-          engineRef.current.handleLaneInput(lane);
-        }
         return;
       }
       if (engineRef.current) {
         engineRef.current.handleLaneInput(lane);
       }
     },
-    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
+    [isPaused, resumeCountdown, startCountdown, isWaitingForStart, handleStartGame]
   );
 
   // Animation Loop
@@ -420,11 +432,11 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
           />
         )}
 
-        {/* 3-2-1 Countdown */}
-        {resumeCountdown !== null && (
+        {/* 3-2-1 Countdown Overlay for Kickoff or Resume */}
+        {(startCountdown !== null || resumeCountdown !== null) && (
           <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn pointer-events-none">
-            <div className="text-7xl sm:text-8xl font-black text-emerald-300 animate-ping font-mono">
-              {resumeCountdown}
+            <div className="text-7xl sm:text-8xl font-black text-emerald-300 animate-ping font-mono drop-shadow-[0_0_35px_rgba(52,211,153,0.9)]">
+              {startCountdown ?? resumeCountdown}
             </div>
             <p className="text-xs uppercase tracking-widest text-emerald-200 mt-4 font-bold">
               GET READY...

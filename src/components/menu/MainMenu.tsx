@@ -20,12 +20,10 @@ import {
   Sliders,
   LogIn,
   Music,
-  Compass,
   Radio,
   Clock,
   Heart,
   Share2,
-  Headphones,
   Gamepad2,
   BookOpen,
   Info,
@@ -43,19 +41,6 @@ import { MultiplayerModal } from '@/components/multiplayer/MultiplayerModal';
 import { QuickPlayModal } from '@/components/multiplayer/QuickPlayModal';
 import { NotificationDrawer } from '@/components/social/NotificationDrawer';
 import { useRouter } from 'next/navigation';
-
-/** Inline YouTube logo SVG — lucide-react does not export a Youtube icon in this version. */
-const YoutubeSvg: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-  >
-    <path d="M21.593 7.203a2.506 2.506 0 0 0-1.762-1.766C18.265 5.007 12 5 12 5s-6.264-.007-7.831.404a2.56 2.56 0 0 0-1.766 1.778c-.413 1.566-.417 4.814-.417 4.814s-.004 3.264.413 4.814c.23.857.905 1.534 1.762 1.766 1.582.43 7.83.437 7.83.437s6.265.007 7.831-.403a2.515 2.515 0 0 0 1.767-1.763c.414-1.565.417-4.812.417-4.812s.02-3.265-.413-4.826zM9.996 15.005l.005-6 5.207 3.005-5.212 2.995z" />
-  </svg>
-);
 
 // Lazy-loaded heavyweight modal components for bundle splitting
 const PublicRoomBrowser = dynamic(() => import('@/components/multiplayer/PublicRoomBrowser').then(m => m.PublicRoomBrowser), { ssr: false });
@@ -648,28 +633,28 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                       <span>ENTER THE ARENA</span>
                     </button>
 
-                    <a
-                      href="#featured-music"
+                    <button
+                      onClick={() => setShowLeaderboardModal(true)}
                       className="px-6 py-3.5 rounded-2xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 backdrop-blur-md shadow-md"
                     >
-                      <Compass className="w-4 h-4 text-purple-400" />
-                      <span>EXPLORE MUSIC</span>
-                    </a>
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span>VIEW LEADERBOARD</span>
+                    </button>
                   </div>
 
                   {/* Quick Feature Badges */}
                   <div className="pt-3 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs text-gray-400">
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>Zero latency 4-lane engine</span>
+                      <span>Ultra-responsive rhythm gameplay</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <span>Direct touch & mouse tiles</span>
+                      <span>Touch, mouse &amp; keyboard keys</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                      <span>Realtime 4-player lobbies</span>
+                      <span>Live multiplayer lobbies</span>
                     </div>
                   </div>
                 </div>
@@ -705,310 +690,34 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </div>
             </section>
 
-            {/* SECTION A: GAME MODES */}
-            <section className="w-full space-y-6 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-gray-800/80 pb-3">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                    <Gamepad2 className="w-6 h-6 text-amber-400" />
-                    <span>Select Game Mode</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                    Choose your rhythm discipline and start your praise session.
-                  </p>
-                </div>
-                <span className="text-xs font-mono text-purple-400">4 Lanes &bull; High Precision</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Solo Piano */}
-                <button
-                  onClick={() => onSelectInstrument('piano')}
-                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131024] to-[#0c0a17] border border-cyan-500/30 hover:border-cyan-400 transition-all duration-200 hover:shadow-xl hover:shadow-cyan-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-md">
-                        <Music className="w-6 h-6 stroke-[2.2]" />
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase">
-                        Piano
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-cyan-300 transition flex items-center gap-1.5">
-                      Solo Piano
-                      <ChevronRight className="w-4 h-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                    </h3>
-                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                      Follow the rhythm. Master every note.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
-                    <span className="text-cyan-400 font-bold">Falling Keys</span>
-                    <span className="text-gray-400 group-hover:text-white transition">Play Piano &rarr;</span>
-                  </div>
-                </button>
-
-                {/* 2. Solo Guitar */}
-                <button
-                  onClick={() => onSelectInstrument('guitar')}
-                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#181124] to-[#0c0a17] border border-amber-500/30 hover:border-amber-400 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md">
-                        <Radio className="w-6 h-6 stroke-[2.2]" />
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
-                        Guitar
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-amber-300 transition flex items-center gap-1.5">
-                      Solo Guitar
-                      <ChevronRight className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                    </h3>
-                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                      Feel the rhythm. Play every sequence.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
-                    <span className="text-amber-400 font-bold">Arcade Fretboard</span>
-                    <span className="text-gray-400 group-hover:text-white transition">Play Guitar &rarr;</span>
-                  </div>
-                </button>
-
-                {/* 3. Practice Mode */}
-                <button
-                  onClick={() => onSelectInstrument('piano', true)}
-                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
-                        <BookOpen className="w-6 h-6 stroke-[2.2]" />
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
-                        Practice
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-emerald-300 transition flex items-center gap-1.5">
-                      Practice Mode
-                      <ChevronRight className="w-4 h-4 text-emerald-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                    </h3>
-                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                      Learn the music at your own pace.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
-                    <span className="text-emerald-400 font-bold">Safe Rehearsal</span>
-                    <span className="text-gray-400 group-hover:text-white transition">Practice &rarr;</span>
-                  </div>
-                </button>
-
-                {/* 4. Multiplayer Arena */}
-                <button
-                  onClick={() => setShowMultiplayerModal(true)}
-                  className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#1d0e2e] to-[#0c0a17] border border-purple-500/40 hover:border-purple-300 transition-all duration-200 hover:shadow-xl hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md">
-                        <Users className="w-6 h-6 stroke-[2.2]" />
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase">
-                        Realtime
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-black text-white mt-4 group-hover:text-purple-300 transition flex items-center gap-1.5">
-                      Multiplayer
-                      <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
-                    </h3>
-                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                      Challenge friends and compete together.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
-                    <span className="text-purple-300 font-bold">Up to 4 Players</span>
-                    <span className="text-gray-400 group-hover:text-white transition">Enter Lobby &rarr;</span>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            {/* SECTION B: MUSIC STREAMING & PRAISE STUDIO */}
-            <section id="featured-music" className="w-full space-y-6 text-left scroll-mt-24">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-gray-800/80 pb-3">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                    <Headphones className="w-6 h-6 text-purple-400" />
-                    <span>Praise Music Studio</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                    Stream millions of worship songs, synchronize YouTube gospel videos, or upload your personal audio files.
-                  </p>
-                </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Global Streaming Enabled
-                </span>
-              </div>
-
-              {/* Music Studio Showcase Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* 1. Search & Stream Previews */}
-                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-purple-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10">
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
-                      <Search className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                        Online Search &amp; Stream
-                      </span>
-                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-purple-300 transition">
-                        Streaming Music Search
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                        Instant discovery across global gospel artists: Maverick City, Kirk Franklin, Elevation, CeCe Winans, and more. Audition previews and play instantly.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setShowInstrumentSelect(true)}
-                    className="mt-6 w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/30"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    <span>Search Tracks</span>
-                  </button>
-                </div>
-
-                {/* 2. YouTube Music Direct */}
-                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-red-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10">
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                      <YoutubeSvg className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
-                        YouTube IFrame Clock
-                      </span>
-                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-red-300 transition">
-                        YouTube Music Player
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                        Paste any YouTube or YouTube Music worship video URL. Our 60fps microsecond-interpolated clock synchronizes gameplay with the video stream.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setShowInstrumentSelect(true)}
-                    className="mt-6 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-red-600/30"
-                  >
-                    <YoutubeSvg className="w-3.5 h-3.5" />
-                    <span>Play YouTube</span>
-                  </button>
-                </div>
-
-                {/* 3. Audio File Upload & Synth */}
-                <div className="group rounded-3xl bg-[#110e1f] border border-gray-800 hover:border-amber-500/50 p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/10">
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                      <Music className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                        Local Studio &amp; Synth
-                      </span>
-                      <h3 className="text-lg font-black text-white mt-1 group-hover:text-amber-300 transition">
-                        Upload &amp; Demo Synth
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                        Upload custom MP3, WAV, or AAC audio files with browser multi-band transient detection, or synthesize an instant 120 BPM royalty-free praise hymn.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setShowInstrumentSelect(true)}
-                    className="mt-6 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-black stroke-black" />
-                    <span>Open Studio</span>
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {/* SECTION C & D: COMMUNITY & COMPETITION HUB */}
-            <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
-              {/* Competition Card */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#151124] to-[#0c0a17] border border-amber-500/30 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                      <Trophy className="w-5 h-5 stroke-[2.2]" />
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 uppercase">
-                      Ranked Season 1
-                    </span>
-                  </div>
-
-                  <h3 className="text-xl font-black text-white mt-4">Championship Tournaments</h3>
-                  <p className="text-xs sm:text-sm text-gray-300 mt-1 leading-relaxed">
-                    Compete in single-elimination brackets with up to 16 players. Win seasonal trophies and advance your gem rank.
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-between">
-                  <div className="text-xs text-gray-400">
-                    <span className="text-amber-400 font-bold">Weekly Prize Pools</span> &bull; 8-Player Brackets
-                  </div>
-                  <button
-                    onClick={() => setShowTournamentsHub(true)}
-                    className="px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-amber-500/40 text-amber-300 text-xs font-bold transition flex items-center gap-1.5"
-                  >
-                    <span>View Brackets</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Community & Progression Card */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#121021] to-[#0c0a17] border border-purple-500/30 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+            {/* COMMUNITY & PROGRESSION HUB */}
+            <section className="w-full max-w-4xl mx-auto text-left">
+              <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#141026] via-[#0f0c1e] to-[#08070d] border border-purple-500/30 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+                <div className="space-y-3 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
                       <Users className="w-5 h-5 stroke-[2.2]" />
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 uppercase">
-                      {user ? 'Verified Profile' : 'Guest Traveler'}
+                      {user ? 'Member Profile' : 'Guest Session'}
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-black text-white mt-4">
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
                     {user && profile ? profile.displayName : 'Join the PraiseTiles Community'}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-300 mt-1 leading-relaxed">
-                    Track your personal rhythm streak, share songs with friends, and climb the global leaderboards with authentic Supabase syncing.
+                  <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                    Track your daily praise streak, challenge friends, and climb the global leaderboards as you master new worship songs.
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end gap-3 shrink-0">
                   <div className="text-xs text-gray-400">
-                    <strong className="text-white">{tier.gemRank}</strong> &bull; Level {progress?.level || 1}
+                    <strong className="text-amber-400 font-bold">{tier.gemRank}</strong> &bull; Level {progress?.level || 1}
                   </div>
                   <button
                     onClick={user ? onOpenProfile : onOpenAuth}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-purple-600/25"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-purple-600/30"
                   >
                     <span>{user ? 'My Profile' : 'Sign In / Register'}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -1018,68 +727,150 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </section>
           </div>
         ) : (
-          /* Instrument Selection View */
-          <div className="w-full flex flex-col items-center gap-8 animate-fadeIn max-w-4xl mx-auto">
+          /* Dedicated Game Mode Selection View */
+          <div className="w-full flex flex-col items-center gap-8 animate-fadeIn max-w-5xl mx-auto">
             <div className="space-y-2 text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase">
-                <Music className="w-3.5 h-3.5 text-amber-400" />
-                <span>Select Your Instrument</span>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Select Game Mode</span>
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black text-white">
-                Choose Your Rhythm Experience
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                Choose Your Game Mode
               </h2>
-              <p className="text-xs sm:text-sm text-gray-400 max-w-md mx-auto">
-                Both instruments use the exact same 4-lane timing and scoring engine with custom tailored visuals.
+              <p className="text-xs sm:text-sm text-gray-400 max-w-lg mx-auto">
+                Pick your rhythm discipline and start your praise session.
               </p>
             </div>
 
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Piano Tiles */}
+            {/* 4-Card Game Mode Grid */}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {/* 1. Solo Piano */}
               <button
                 onClick={() => onSelectInstrument('piano')}
-                className="group relative flex flex-col items-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-cyan-500/40 hover:border-cyan-300 transition duration-300 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98]"
+                className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131024] to-[#0c0a17] border border-cyan-500/30 hover:border-cyan-400 transition-all duration-200 hover:shadow-xl hover:shadow-cyan-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
               >
-                <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center mb-5 group-hover:scale-110 transition shadow-lg">
-                  <Music className="w-8 h-8 text-cyan-400 stroke-[2.2]" />
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-md">
+                      <Music className="w-6 h-6 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase">
+                      Piano
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black text-white mt-4 group-hover:text-cyan-300 transition flex items-center gap-1.5">
+                    Solo Piano
+                    <ChevronRight className="w-4 h-4 text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                  </h3>
+                  <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                    Follow the rhythm. Master every key.
+                  </p>
                 </div>
-                <h3 className="text-xl font-black text-white group-hover:text-cyan-300">
-                  Piano Tiles
-                </h3>
-                <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                  Falling neon keys, high contrast geometric hit-zones, and elegant piano acoustic textures.
-                </p>
-                <span className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-xs font-bold text-cyan-300 group-hover:bg-cyan-500 group-hover:text-black transition">
-                  <span>Enter Piano Mode</span>
-                  <ChevronRight className="w-4 h-4" />
-                </span>
+
+                <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                  <span className="text-cyan-400 font-bold">Falling Keys</span>
+                  <span className="text-gray-400 group-hover:text-white transition">Play Piano &rarr;</span>
+                </div>
               </button>
 
-              {/* Guitar Tiles */}
+              {/* 2. Solo Guitar */}
               <button
                 onClick={() => onSelectInstrument('guitar')}
-                className="group relative flex flex-col items-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#181124] to-[#0c0a17] border border-amber-500/40 hover:border-amber-300 transition duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98]"
+                className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#181124] to-[#0c0a17] border border-amber-500/30 hover:border-amber-400 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
               >
-                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center mb-5 group-hover:scale-110 transition shadow-lg">
-                  <Radio className="w-8 h-8 text-amber-400 stroke-[2.2]" />
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md">
+                      <Radio className="w-6 h-6 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
+                      Guitar
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black text-white mt-4 group-hover:text-amber-300 transition flex items-center gap-1.5">
+                    Solo Guitar
+                    <ChevronRight className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                  </h3>
+                  <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                    Feel the rhythm. Play every sequence.
+                  </p>
                 </div>
-                <h3 className="text-xl font-black text-white group-hover:text-amber-300">
-                  Guitar Tiles
-                </h3>
-                <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                  Arcade fretboard perspective, steel string guides, and warm overdriven acoustic guitar tone.
-                </p>
-                <span className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300 group-hover:bg-amber-500 group-hover:text-black transition">
-                  <span>Enter Guitar Mode</span>
-                  <ChevronRight className="w-4 h-4" />
-                </span>
+
+                <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                  <span className="text-amber-400 font-bold">Arcade Fretboard</span>
+                  <span className="text-gray-400 group-hover:text-white transition">Play Guitar &rarr;</span>
+                </div>
+              </button>
+
+              {/* 3. Practice Mode */}
+              <button
+                onClick={() => onSelectInstrument('piano', true)}
+                className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#131224] to-[#0c0a17] border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/15 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
+                      <BookOpen className="w-6 h-6 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
+                      Practice
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black text-white mt-4 group-hover:text-emerald-300 transition flex items-center gap-1.5">
+                    Practice Mode
+                    <ChevronRight className="w-4 h-4 text-emerald-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                  </h3>
+                  <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                    Learn the music at your own pace without failing.
+                  </p>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                  <span className="text-emerald-400 font-bold">Safe Rehearsal</span>
+                  <span className="text-gray-400 group-hover:text-white transition">Practice &rarr;</span>
+                </div>
+              </button>
+
+              {/* 4. Multiplayer Arena */}
+              <button
+                onClick={() => setShowMultiplayerModal(true)}
+                className="group relative p-6 rounded-3xl bg-gradient-to-b from-[#1d0e2e] to-[#0c0a17] border border-purple-500/40 hover:border-purple-300 transition-all duration-200 hover:shadow-xl hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between text-left"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md">
+                      <Users className="w-6 h-6 stroke-[2.2]" />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase">
+                      Realtime
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black text-white mt-4 group-hover:text-purple-300 transition flex items-center gap-1.5">
+                    Multiplayer
+                    <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition" />
+                  </h3>
+                  <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                    Lobbies, private rooms &amp; tournaments.
+                  </p>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                  <span className="text-purple-300 font-bold">Up to 4 Players</span>
+                  <span className="text-gray-400 group-hover:text-white transition">Enter Lobby &rarr;</span>
+                </div>
               </button>
             </div>
 
+            {/* Back to Home Button */}
             <button
               onClick={() => setShowInstrumentSelect(false)}
-              className="text-xs text-gray-400 hover:text-white transition px-5 py-2.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 flex items-center gap-1.5"
+              className="text-xs text-gray-400 hover:text-white transition px-6 py-3 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <span>&larr; Back to Main Menu</span>
+              <span>&larr; Back to Home</span>
             </button>
           </div>
         )}
@@ -1145,6 +936,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         onOpenPublicLobbies={() => {
           setShowMultiplayerModal(false);
           setShowPublicRoomsModal(true);
+        }}
+        onOpenTournaments={() => {
+          setShowMultiplayerModal(false);
+          setShowTournamentsHub(true);
         }}
       />
 

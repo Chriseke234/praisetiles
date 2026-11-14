@@ -135,7 +135,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
               </div>
 
               <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap button to begin • Direct touch & tap on tiles
+                Tap start to begin • Tiles will start falling to the rhythm
               </p>
             </div>
           </div>

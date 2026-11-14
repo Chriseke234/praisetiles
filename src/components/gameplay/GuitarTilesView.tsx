@@ -144,7 +144,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
               </div>
 
               <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap button to begin • Direct touch & tap on frets
+                Tap start to begin • Tiles will start falling to the rhythm
               </p>
             </div>
           </div>

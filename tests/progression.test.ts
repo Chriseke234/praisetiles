@@ -11,9 +11,9 @@ describe('Player Progression & Promotion Rules', () => {
   describe('calculateMatchXp', () => {
     it('awards full completion XP scaled with accuracy, combo, and score', () => {
       // Completed, 100% accuracy, 50 combo, 50,000 score
-      // 100 * 1.0 + 50 * 0.5 + 50000 / 1000 = 100 + 25 + 50 = 175 XP
+      // 80 * 1.0 + 50 * 0.3 + 50000 / 2000 = 80 + 15 + 25 = 120 XP
       const xp = calculateMatchXp(true, 100.0, 50, 50000, 45);
-      expect(xp).toBe(175);
+      expect(xp).toBe(120);
     });
 
     it('awards 0 XP for failed runs under 15 seconds to prevent spam/farming', () => {

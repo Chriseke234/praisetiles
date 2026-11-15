@@ -1,13 +1,19 @@
 /**
  * Central Versioned Gameplay Configuration for PraiseTiles
- * Rule version: 1.0.0 (Matches GDD v1.0 specifications)
- * 
+ * Rule version: 1.1.0 — Scoring balance pass
+ *
+ * Scoring changes (v1.1.0):
+ *   - Combo multipliers reduced: max is now ×2.0 (was ×3.0).
+ *     Sustain tick + completion bonuses are now FLAT (no combo scaling)
+ *     to prevent double-dipping against high combos.
+ *   - XP formula tightened in progression.ts (scoreBonus divisor: 1000→2000).
+ *
  * Keep all gameplay tuning values in this single module.
  * Never hardcode magic numbers in UI or engine components.
  */
 
 export const GAMEPLAY_CONFIG = {
-  RULES_VERSION: '1.0.0',
+  RULES_VERSION: '1.1.0',
 
   // Audio Upload Constraints
   UPLOAD: {
@@ -56,14 +62,16 @@ export const GAMEPLAY_CONFIG = {
     MISS: 0.00,
   },
 
-  // Combo Multipliers based on consecutive successful hits
-  // 1–9 hits: ×1.0, 10–24: ×1.2, 25–49: ×1.5, 50–99: ×2.0, 100+: ×3.0
+  // Combo Multipliers based on consecutive successful hits.
+  // Reduced in v1.1.0: max cap is ×2.0 (was ×3.0).
+  // Sustain ticks and completion bonuses intentionally do NOT use this multiplier
+  // (see scoring.ts) to prevent score inflation from held notes at high combos.
   COMBO_MULTIPLIERS: [
-    { minCombo: 100, multiplier: 3.0 },
-    { minCombo: 50, multiplier: 2.0 },
-    { minCombo: 25, multiplier: 1.5 },
-    { minCombo: 10, multiplier: 1.2 },
-    { minCombo: 1, multiplier: 1.0 },
+    { minCombo: 100, multiplier: 2.0 },  // 100+: ×2.0 (was ×3.0)
+    { minCombo: 50,  multiplier: 1.5 },  // 50–99: ×1.5 (was ×2.0)
+    { minCombo: 25,  multiplier: 1.25 }, // 25–49: ×1.25 (was ×1.5)
+    { minCombo: 10,  multiplier: 1.1 },  // 10–24: ×1.1 (was ×1.2)
+    { minCombo: 1,   multiplier: 1.0 },  // 1–9: ×1.0 (unchanged)
   ],
 
   // 3-Star Song Progression Stages (fraction of total track duration)

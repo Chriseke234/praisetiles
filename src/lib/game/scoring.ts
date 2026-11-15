@@ -170,10 +170,16 @@ export function getCurrentStarStage(currentTime: number, duration: number): 1 | 
 
 /**
  * Applies a sustain hold tick (+10 pts per 100ms held) to current score.
+ *
+ * NOTE (v1.1.0): Tick points are intentionally FLAT — the combo multiplier is
+ * NOT applied here. Sustain ticks are ambient ambient hold-reward and must not
+ * compound with high combos, which would inflate scores by 3–6× on long notes.
+ * Only the initial note-tap that starts the sustain benefits from the multiplier
+ * (via applyHitToScoreState).
  */
 export function applySustainTickToScoreState(current: ScoreState): ScoreState {
-  const multiplier = getComboMultiplier(current.combo);
-  const points = Math.round(GAMEPLAY_CONFIG.SUSTAIN.TICK_POINTS * multiplier);
+  // Flat reward — no combo multiplier (see note above)
+  const points = GAMEPLAY_CONFIG.SUSTAIN.TICK_POINTS;
   return {
     ...current,
     score: current.score + points,
@@ -181,11 +187,14 @@ export function applySustainTickToScoreState(current: ScoreState): ScoreState {
 }
 
 /**
- * Applies sustain completion bonus (+100 pts) when a long note is held through its full duration.
+ * Applies sustain completion bonus (+100 pts) when a long note is held through
+ * its full duration.
+ *
+ * NOTE (v1.1.0): Completion bonus is FLAT — no combo multiplier — to keep
+ * sustain rewards predictable and prevent score inflation at high combos.
  */
 export function applySustainCompletionToScoreState(current: ScoreState): ScoreState {
-  const multiplier = getComboMultiplier(current.combo);
-  const bonus = Math.round(GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS * multiplier);
+  const bonus = GAMEPLAY_CONFIG.SUSTAIN.COMPLETION_BONUS;
   return {
     ...current,
     score: current.score + bonus,

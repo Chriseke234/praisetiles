@@ -88,9 +88,9 @@ describe('Phase 9 — Journey A: Guest Solo Play', () => {
       state = applyHitToScoreState(state, 'PERFECT');
     }
     expect(state.combo).toBe(10);
-    // 10th hit gets 1.2x multiplier = 100 * 1.2 = 120
-    // Total: 9 * 100 + 120 = 1020
-    expect(state.score).toBe(1020);
+    // 10th hit gets 1.1x multiplier = 100 * 1.1 = 110
+    // Total: 9 * 100 + 110 = 1010
+    expect(state.score).toBe(1010);
     expect(state.runAccuracy).toBe(100);
 
     // A MISS resets combo to 0 and counts against weighted accuracy
@@ -149,11 +149,11 @@ describe('Phase 9 — Journey B: Registered Account, Progression & Data Scrubbin
   it('awards XP according to performance and prevents short-run farming', () => {
     // Completed run: base + combo bonus + score bonus
     const completedRun = calculateMatchXp(true, 95.0, 50, 45000, 120.0);
-    // Base: 100 * 0.95 = 95
-    // Combo bonus: 50 * 0.5 = 25
-    // Score bonus: 45000 / 1000 = 45
-    // Total = 95 + 25 + 45 = 165
-    expect(completedRun).toBe(165);
+    // Base: 80 * 0.95 = 76
+    // Combo bonus: 50 * 0.3 = 15
+    // Score bonus: 45000 / 2000 = 22.5
+    // Total = 76 + 15 + 22.5 = 113.5 -> 114
+    expect(completedRun).toBe(114);
 
     // Failed run < 15s: 0 XP (anti-farming protection)
     const quickFailXp = calculateMatchXp(false, 60.0, 5, 2000, 10.5);

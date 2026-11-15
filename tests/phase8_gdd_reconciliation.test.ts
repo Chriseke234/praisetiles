@@ -19,8 +19,8 @@ import { useKeyBindings } from '@/hooks/useKeyBindings';
 import { RunResult } from '@/types/game';
 
 describe('Phase 8: GDD Core Gameplay Rules Reconciliation', () => {
-  it('enforces exact GDD version 1.0.0 rules specification', () => {
-    expect(GAMEPLAY_CONFIG.RULES_VERSION).toBe('1.0.0');
+  it('enforces exact GDD version 1.1.0 rules specification', () => {
+    expect(GAMEPLAY_CONFIG.RULES_VERSION).toBe('1.1.0');
     expect(GAMEPLAY_CONFIG.LANES.COUNT).toBe(4);
     expect(GAMEPLAY_CONFIG.LANES.DEFAULT_KEYS).toEqual(['d', 'f', 'j', 'k']);
   });
@@ -45,13 +45,13 @@ describe('Phase 8: GDD Core Gameplay Rules Reconciliation', () => {
   });
 
   it('matches progressive combo multiplier tiers', () => {
-    // 1-9 hits: 1.0x, 10-24: 1.2x, 25-49: 1.5x, 50-99: 2.0x, 100+: 3.0x
+    // 1-9 hits: 1.0x, 10-24: 1.1x, 25-49: 1.25x, 50-99: 1.5x, 100+: 2.0x (v1.1.0)
     const multipliers = GAMEPLAY_CONFIG.COMBO_MULTIPLIERS;
     expect(multipliers).toEqual([
-      { minCombo: 100, multiplier: 3.0 },
-      { minCombo: 50, multiplier: 2.0 },
-      { minCombo: 25, multiplier: 1.5 },
-      { minCombo: 10, multiplier: 1.2 },
+      { minCombo: 100, multiplier: 2.0 },
+      { minCombo: 50, multiplier: 1.5 },
+      { minCombo: 25, multiplier: 1.25 },
+      { minCombo: 10, multiplier: 1.1 },
       { minCombo: 1, multiplier: 1.0 },
     ]);
   });

@@ -345,7 +345,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* PERFECT */}
             <div className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/30 text-left">
-              <span className="text-[10px] font-bold uppercase text-purple-300">Perfect (&plusmn;50ms)</span>
+              <span className="text-[10px] font-bold uppercase text-purple-300">Perfect (±100ms)</span>
               <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.perfectCount ?? result.notesHit}
               </p>
@@ -354,7 +354,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
             {/* GREAT */}
             <div className="p-3.5 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 text-left">
-              <span className="text-[10px] font-bold uppercase text-cyan-300">Great (&plusmn;100ms)</span>
+              <span className="text-[10px] font-bold uppercase text-cyan-300">Great (±220ms)</span>
               <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.greatCount ?? 0}
               </p>
@@ -363,7 +363,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
             {/* GOOD */}
             <div className="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 text-left">
-              <span className="text-[10px] font-bold uppercase text-amber-300">Good (&plusmn;150ms)</span>
+              <span className="text-[10px] font-bold uppercase text-amber-300">Good (±350ms)</span>
               <p className="text-xl font-black text-white mt-0.5 font-mono">
                 {result.goodCount ?? 0}
               </p>
@@ -397,7 +397,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               <span className="text-sm font-black text-amber-300 font-mono">
                 +{result.sustainBonusPoints ?? 0} PTS
               </span>
-              <span className="text-[10px] text-amber-400/80 block uppercase font-bold">+250 per completion</span>
+              <span className="text-[10px] text-amber-400/80 block uppercase font-bold">+100 flat per completion</span>
             </div>
           </div>
         </div>

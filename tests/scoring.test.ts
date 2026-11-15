@@ -49,24 +49,24 @@ describe('Scoring & Judgement Engine', () => {
       expect(getComboMultiplier(9)).toBe(1.0);
     });
 
-    it('applies 1.2x multiplier for combo 10-24', () => {
-      expect(getComboMultiplier(10)).toBe(1.2);
-      expect(getComboMultiplier(24)).toBe(1.2);
+    it('applies 1.1x multiplier for combo 10-24', () => {
+      expect(getComboMultiplier(10)).toBe(1.1);
+      expect(getComboMultiplier(24)).toBe(1.1);
     });
 
-    it('applies 1.5x multiplier for combo 25-49', () => {
-      expect(getComboMultiplier(25)).toBe(1.5);
-      expect(getComboMultiplier(49)).toBe(1.5);
+    it('applies 1.25x multiplier for combo 25-49', () => {
+      expect(getComboMultiplier(25)).toBe(1.25);
+      expect(getComboMultiplier(49)).toBe(1.25);
     });
 
-    it('applies 2.0x multiplier for combo 50-99', () => {
-      expect(getComboMultiplier(50)).toBe(2.0);
-      expect(getComboMultiplier(99)).toBe(2.0);
+    it('applies 1.5x multiplier for combo 50-99', () => {
+      expect(getComboMultiplier(50)).toBe(1.5);
+      expect(getComboMultiplier(99)).toBe(1.5);
     });
 
-    it('applies 3.0x multiplier for combo 100+', () => {
-      expect(getComboMultiplier(100)).toBe(3.0);
-      expect(getComboMultiplier(250)).toBe(3.0);
+    it('applies 2.0x multiplier for combo 100+', () => {
+      expect(getComboMultiplier(100)).toBe(2.0);
+      expect(getComboMultiplier(250)).toBe(2.0);
     });
   });
 
@@ -107,10 +107,10 @@ describe('Scoring & Judgement Engine', () => {
       expect(state.combo).toBe(9);
       expect(state.score).toBe(900);
 
-      // 10th hit: Perfect with 1.2x multiplier -> 100 * 1.2 = 120
+      // 10th hit: Perfect with 1.1x multiplier -> 100 * 1.1 = 110
       state = applyHitToScoreState(state, 'PERFECT');
       expect(state.combo).toBe(10);
-      expect(state.score).toBe(1020);
+      expect(state.score).toBe(1010);
       expect(state.maxCombo).toBe(10);
     });
 

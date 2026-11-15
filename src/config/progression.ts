@@ -66,8 +66,20 @@ export const PROGRESSION_CONFIG = {
 
 /**
  * Calculates XP earned for a match run.
+ *
+ * v1.1.0 — Tightened to slow early rank progression:
+ *   base:        80 × accuracyFactor   (was 100 × accuracyFactor)
+ *   comboBonus:  highestCombo × 0.3   (was × 0.5)
+ *   scoreBonus:  score / 2000          (was / 1000)
+ *
+ * Example: perfect run, 150 combo, 15,000 score → ~155 XP (was ~225 XP)
+ * Reaching Jade (300 XP) now takes ~2–3 strong completed songs instead of 2.
+ *
  * Completed runs scale with accuracy, highest combo, and score.
  * Failed runs award 5 XP only if played for >= 15 seconds to prevent spam.
+ *
+ * IMPORTANT: Keep in sync with the SQL formula in
+ * supabase/migrations/fix_scoring_balance.sql (process_match_result RPC).
  */
 export function calculateMatchXp(
   completed: boolean,
@@ -78,9 +90,9 @@ export function calculateMatchXp(
 ): number {
   if (completed) {
     const accuracyFactor = Math.max(0, Math.min(100, accuracy)) / 100;
-    const base = 100 * accuracyFactor;
-    const comboBonus = highestCombo * 0.5;
-    const scoreBonus = score / 1000;
+    const base       = 80 * accuracyFactor;              // up to 80 XP (was 100)
+    const comboBonus = highestCombo * 0.3;               // was × 0.5
+    const scoreBonus = score / 2000;                     // was / 1000
     return Math.round(base + comboBonus + scoreBonus);
   }
 

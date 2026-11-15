@@ -139,12 +139,19 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           {error ? (
             <div className="text-center py-12 space-y-3">
               <p className="text-xs text-rose-400">{error}</p>
-              {activeTab === 'friends' && !user && (
+              {activeTab === 'friends' && !user ? (
                 <button
                   onClick={() => { onClose(); onOpenAuth(); }}
                   className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition"
                 >
                   Sign In Now
+                </button>
+              ) : (
+                <button
+                  onClick={() => void fetchLeaderboard()}
+                  className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold transition"
+                >
+                  Retry
                 </button>
               )}
             </div>

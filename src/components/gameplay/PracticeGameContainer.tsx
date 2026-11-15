@@ -181,9 +181,12 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     };
   }, [initEngine, audioPlayer]);
 
+  // Start match kickoff smoothly with visual 3-2-1 countdown.
+  // IMPORTANT: isWaitingForStart stays TRUE during countdown so the RAF loop
+  // does not fire (avoids 60 state-updates/s with time=0 while engine is idle).
+  // It is only set to false when engine.start() + audioPlayer.play() fire.
   const handleStartGame = useCallback(async () => {
     if (!isWaitingForStart || startCountdown !== null) return;
-    setIsWaitingForStart(false);
 
     if (typeof audioPlayer.ensureContext === 'function') {
       try {
@@ -202,6 +205,10 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       } else {
         if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
         setStartCountdown(null);
+
+        // Only NOW allow the RAF loop to run — engine is about to start
+        setIsWaitingForStart(false);
+
         if (engineRef.current) {
           engineRef.current.start();
         }

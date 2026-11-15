@@ -87,6 +87,13 @@ export async function GET(req: NextRequest) {
       .range(offset, offset + pageSize - 1);
 
     if (error) {
+      // Non-fatal: table doesn't exist yet or no rows match — return empty leaderboard
+      // so the UI shows "No ranked matches recorded" rather than an error screen.
+      // 42P01 = relation does not exist (PostgREST/Postgres), PGRST116 = no rows via .single()
+      const nonFatalCodes = ['42P01', 'PGRST116', 'PGRST200'];
+      if (nonFatalCodes.includes(error.code ?? '')) {
+        return NextResponse.json({ entries: [], total: 0, page, pageSize });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -132,6 +139,12 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await dbQuery;
 
   if (error) {
+    // Non-fatal: table doesn't exist yet or no rows — return empty leaderboard
+    // so the UI shows "No ranked matches recorded" rather than an error screen.
+    const nonFatalCodes = ['42P01', 'PGRST116', 'PGRST200'];
+    if (nonFatalCodes.includes(error.code ?? '')) {
+      return NextResponse.json({ entries: [], total: 0, page, pageSize });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

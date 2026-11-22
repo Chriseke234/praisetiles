@@ -218,13 +218,37 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
         const videoId = ytData.videoId || ytData.track?.videoId;
         const durationSec = Math.max(90, track.durationSec || ytData.durationSec || 180);
 
-        setProcessingStatus(`Initializing full YouTube audio for "${track.title}"...`);
+        // Detect real song BPM from the 30s audio preview so tiles match the track's actual tempo
+        let detectedBpm = 120;
+        if (track.previewUrl) {
+          try {
+            setProcessingStatus(`Analyzing real tempo for "${track.title}"...`);
+            const proxyUrl = track.previewUrl.startsWith('http')
+              ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
+              : track.previewUrl;
+            const previewRes = await fetch(proxyUrl);
+            if (previewRes.ok) {
+              const arrBuf = await previewRes.arrayBuffer();
+              const ctx = await audioPlayer.ensureContext();
+              const decodedPreview = await decodeAudioDataCompat(ctx, arrBuf);
+              const analyzedPreview = await generateRhythmMapFromAudio(decodedPreview, title);
+              const est = analyzedPreview.metrics?.estimatedBpm;
+              if (typeof est === 'number' && est >= 65 && est <= 180) {
+                detectedBpm = Math.round(est);
+              }
+            }
+          } catch {
+            // Non-blocking: fall back to 120 BPM if preview cannot be decoded
+          }
+        }
+
+        setProcessingStatus(`Initializing full YouTube audio (${detectedBpm} BPM)...`);
         const ytPlayer = new YouTubeAudioPlayer(videoId);
 
-        setProcessingStatus('Generating full beat-aligned 4-lane chart...');
-        await new Promise((r) => setTimeout(r, 120));
+        setProcessingStatus('Generating beat-aligned 4-lane chart...');
+        await new Promise((r) => setTimeout(r, 80));
 
-        const map = generateRhythmMapForDuration(title, durationSec, 128);
+        const map = generateRhythmMapForDuration(title, durationSec, detectedBpm);
         setIsProcessing(false);
 
         if (skipPreview && onQuickPlayYouTube) {

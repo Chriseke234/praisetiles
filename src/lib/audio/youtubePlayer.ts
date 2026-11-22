@@ -143,11 +143,29 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
                   this.onEndedCallback();
                 }
               } else if (event.data === 1) {
+                // Lock clock directly to YouTube's actual audio timestamp the instant audio begins
+                if (this.player && typeof this.player.getCurrentTime === 'function') {
+                  const t = this.player.getCurrentTime();
+                  if (typeof t === 'number' && !isNaN(t)) {
+                    this.lastPolledTime = t;
+                  }
+                }
+                this.lastPolledTimestamp = performance.now();
                 this.isPlaying = true;
                 this.startPolling();
-              } else if (event.data === 2) {
+              } else if (event.data === 2 || event.data === 3) {
+                // Pause clock during PAUSED (2) or BUFFERING (3) so tiles never race ahead of silent audio
+                if (this.player && typeof this.player.getCurrentTime === 'function') {
+                  const t = this.player.getCurrentTime();
+                  if (typeof t === 'number' && !isNaN(t)) {
+                    this.lastPolledTime = t;
+                  }
+                }
+                this.lastPolledTimestamp = performance.now();
                 this.isPlaying = false;
-                this.stopPolling();
+                if (event.data === 2) {
+                  this.stopPolling();
+                }
               }
             },
             onError: (err: any) => {
@@ -164,6 +182,8 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
 
   /**
    * Begins playback from offset (seconds).
+   * Keeps `isPlaying = false` until YouTube confirms PLAYING (state 1) so tiles
+   * never drift ahead while the stream buffers.
    */
   public async play(offset: number = 0, onEnded?: () => void): Promise<void> {
     if (!this.player || !this.isReady) {
@@ -173,13 +193,14 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
     this.onEndedCallback = onEnded || null;
 
     if (this.player) {
+      this.lastPolledTime = offset;
+      this.lastPolledTimestamp = performance.now();
+      // Do NOT advance clock while buffering — onStateChange(1) or poll loop will flip isPlaying = true
+      this.isPlaying = false;
       if (offset > 0) {
         this.player.seekTo(offset, true);
       }
       this.player.playVideo();
-      this.isPlaying = true;
-      this.lastPolledTime = offset;
-      this.lastPolledTimestamp = performance.now();
       this.startPolling();
     }
   }
@@ -218,14 +239,36 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
   private startPolling(): void {
     this.stopPolling();
     this.pollInterval = setInterval(() => {
-      if (this.player && typeof this.player.getCurrentTime === 'function') {
-        const time = this.player.getCurrentTime();
-        if (typeof time === 'number' && !isNaN(time)) {
-          this.lastPolledTime = time;
-          this.lastPolledTimestamp = performance.now();
+      if (!this.player || typeof this.player.getCurrentTime !== 'function') return;
+
+      const ytState =
+        typeof this.player.getPlayerState === 'function' ? this.player.getPlayerState() : 1;
+      const now = performance.now();
+
+      if (ytState === 1) {
+        const rawTime = this.player.getCurrentTime();
+        if (typeof rawTime === 'number' && !isNaN(rawTime)) {
+          if (!this.isPlaying) {
+            this.lastPolledTime = rawTime;
+            this.lastPolledTimestamp = now;
+            this.isPlaying = true;
+          } else {
+            const interpolated = this.lastPolledTime + (now - this.lastPolledTimestamp) / 1000;
+            const drift = rawTime - interpolated;
+            // Smooth minor jitter (< 120ms); snap immediately on large seeks (> 250ms)
+            if (Math.abs(drift) < 0.12) {
+              this.lastPolledTime = interpolated + drift * 0.35;
+            } else {
+              this.lastPolledTime = rawTime;
+            }
+            this.lastPolledTimestamp = now;
+          }
         }
+      } else if (ytState === 3) {
+        // Still buffering — freeze interpolated clock
+        this.isPlaying = false;
       }
-    }, 100);
+    }, 50);
   }
 
   private stopPolling(): void {

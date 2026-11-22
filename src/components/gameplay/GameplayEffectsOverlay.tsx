@@ -110,8 +110,8 @@ export const GameplayEffectsOverlay: React.FC<GameplayEffectsOverlayProps> = mem
                   </svg>
                 )}
                 <span>{combo} COMBO</span>
-                {fireTier === 4 && <span className="text-[10px] text-amber-300 font-sans uppercase">🔥 BLAZING</span>}
-                {fireTier === 3 && <span className="text-[10px] text-orange-300 font-sans uppercase">🔥 FIRE</span>}
+                {fireTier === 4 && <span className="text-[10px] text-amber-300 font-sans uppercase">BLAZING</span>}
+                {fireTier === 3 && <span className="text-[10px] text-orange-300 font-sans uppercase">FIRE</span>}
               </div>
             )}
           </div>

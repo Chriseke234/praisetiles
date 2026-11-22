@@ -12,7 +12,7 @@ import {
 } from '@/types/game';
 import { GameEngine } from '@/lib/game/engine';
 import { createInitialScoreState } from '@/lib/game/scoring';
-import { PianoTilesView } from './PianoTilesView';
+import { PianoTilesView, TilesViewHandle } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { GameplayEffectsOverlay } from './GameplayEffectsOverlay';
@@ -90,7 +90,9 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   const [showCalibration, setShowCalibration] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
+  const tilesViewRef = useRef<TilesViewHandle | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const lastReactSyncRef = useRef<number>(0);
   const activeLanesTimeoutRef = useRef<NodeJS.Timeout[]>([]);
   const judgementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sustainBonusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -308,25 +310,34 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     [isPaused, resumeCountdown, isWaitingForStart, firstNote, handleStartGame]
   );
 
-  // Animation Loop with zero-lag monotonic kickoff bridge
+  // High-precision 60-120fps animation loop:
+  // Drives tile GPU transforms directly via tilesViewRef (zero per-frame React re-renders).
   useEffect(() => {
-    const loop = () => {
+    const loop = (nowMs: number) => {
       if (engineRef.current && !isWaitingForStart && !isPaused) {
         const audioTime = audioPlayer.getCurrentTime();
         let time = audioTime;
 
         if (kickoffPerfTimeRef.current !== null) {
           const elapsedSinceKickoff = (performance.now() - kickoffPerfTimeRef.current) / 1000;
-          if (audioTime > kickoffOffsetRef.current + 0.01) {
+          if (audioTime > kickoffOffsetRef.current + 0.005) {
             kickoffPerfTimeRef.current = null;
             time = audioTime;
-          } else {
+          } else if (elapsedSinceKickoff <= 0.08) {
             time = kickoffOffsetRef.current + elapsedSinceKickoff;
+          } else {
+            time = audioTime;
           }
         }
 
-        setCurrentAudioTime(time);
         engineRef.current.update(time);
+        const approach = engineRef.current.getDynamicApproachTime();
+        tilesViewRef.current?.updatePositions(time, approach);
+
+        if (nowMs - lastReactSyncRef.current >= 200) {
+          lastReactSyncRef.current = nowMs;
+          setCurrentAudioTime(time);
+        }
       }
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -408,6 +419,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
       <main className="relative flex-1 w-full max-w-lg mx-auto overflow-hidden">
         {instrument === 'piano' ? (
           <PianoTilesView
+            ref={tilesViewRef}
             notes={notes}
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}
@@ -424,6 +436,7 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
           />
         ) : (
           <GuitarTilesView
+            ref={tilesViewRef}
             notes={notes}
             currentTime={currentAudioTime}
             approachTime={engineRef.current?.getDynamicApproachTime()}

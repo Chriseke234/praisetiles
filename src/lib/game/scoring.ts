@@ -217,18 +217,32 @@ export function applyEarlyReleaseToScoreState(current: ScoreState): ScoreState {
 
 /**
  * Calculates dynamic approach time (speed) based on song progression and tempo.
- * Star 1 = 1.8s (comfortable intro)
- * Star 2 = 1.45s (accelerated moderate pace)
- * Star 3 = 1.15s (climax arcade speed)
+ * Smoothly interpolates across Star 1 -> Star 2 -> Star 3 transitions over a 3s window
+ * so visible falling tiles never abruptly jump mid-song.
  */
 export function getDynamicApproachTime(currentTime: number, duration: number, estimatedBpm?: number | null): number {
-  const stage = getCurrentStarStage(currentTime, duration);
-  const baseTime =
-    stage === 1
-      ? GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_1
-      : stage === 2
-      ? GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_2
-      : GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES.STAR_3;
+  const { STAR_1, STAR_2, STAR_3 } = GAMEPLAY_CONFIG.DYNAMIC_APPROACH_TIMES;
+  let baseTime: number = STAR_1;
+
+  if (duration > 0) {
+    const t1 = duration * GAMEPLAY_CONFIG.STAGE_FRACTIONS.STAR_1;
+    const t2 = duration * GAMEPLAY_CONFIG.STAGE_FRACTIONS.STAR_2;
+    const rampSec = Math.min(3.0, duration * 0.04);
+
+    if (currentTime < t1) {
+      baseTime = STAR_1;
+    } else if (currentTime < t1 + rampSec) {
+      const p = (currentTime - t1) / rampSec;
+      baseTime = STAR_1 + (STAR_2 - STAR_1) * p;
+    } else if (currentTime < t2) {
+      baseTime = STAR_2;
+    } else if (currentTime < t2 + rampSec) {
+      const p = (currentTime - t2) / rampSec;
+      baseTime = STAR_2 + (STAR_3 - STAR_2) * p;
+    } else {
+      baseTime = STAR_3;
+    }
+  }
 
   // Modulate slightly based on BPM if detected (faster tempo = faster tiles)
   if (estimatedBpm && estimatedBpm > 130) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   RhythmMap,
   InstrumentType,
@@ -54,16 +54,43 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   onExit,
 }) => {
   const { stats } = useAuth();
-  const firstNote = map.notes.length > 0 ? map.notes[0] : null;
+
+  // Normalize the opening note so the TAP TO START tile is always a crisp short tile
+  // and the second tile is always immediately visible above it (max 0.85s lead-in gap).
+  const preparedMap = useMemo<RhythmMap>(() => {
+    if (!map.notes || map.notes.length === 0) return map;
+    const normalizedNotes = map.notes.map((n, idx) => {
+      if (idx === 0) {
+        const nextNote = map.notes[1];
+        const maxLeadGap = 0.85;
+        const alignedTime =
+          nextNote && nextNote.time - n.time > maxLeadGap
+            ? Math.max(0.2, Math.round((nextNote.time - 0.7) * 1000) / 1000)
+            : n.time;
+        return {
+          ...n,
+          time: alignedTime,
+          type: 'short' as const,
+          duration: undefined,
+          sustainProgress: undefined,
+          sustainState: undefined,
+          hit: false,
+          grade: null,
+        };
+      }
+      return { ...n, hit: false, grade: null };
+    });
+    return { ...map, notes: normalizedNotes };
+  }, [map]);
+
+  const firstNote = preparedMap.notes.length > 0 ? preparedMap.notes[0] : null;
   const initialStartTime = firstNote ? firstNote.time : 0;
 
   const [isWaitingForStart, setIsWaitingForStart] = useState(true);
   const [failedResult, setFailedResult] = useState<RunResult | null>(null);
   const [scoreState, setScoreState] = useState<ScoreState>(createInitialScoreState);
   const [currentAudioTime, setCurrentAudioTime] = useState<number>(initialStartTime);
-  const [notes, setNotes] = useState<readonly Note[]>(() =>
-    map.notes.map((n) => ({ ...n, hit: false, grade: null }))
-  );
+  const [notes, setNotes] = useState<readonly Note[]>(() => preparedMap.notes);
   const [activeLanes, setActiveLanes] = useState<boolean[]>([false, false, false, false]);
   const [latestJudgement, setLatestJudgement] = useState<{
     grade: HitGrade;
@@ -104,6 +131,14 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Monotonic clock bridge so tiles begin falling on frame 1 even while WebAudio/YouTube buffers
   const kickoffPerfTimeRef = useRef<number | null>(null);
   const kickoffOffsetRef = useRef<number>(initialStartTime);
+  const audioClockLeadRef = useRef<number>(0);
+
+  // Pre-warm audio context / YouTube IFrame on mount so tapping START has zero initialization delay
+  useEffect(() => {
+    if (typeof audioPlayer.ensureContext === 'function') {
+      void audioPlayer.ensureContext().catch(() => {});
+    }
+  }, [audioPlayer]);
 
   // Update calibration offset on active engine dynamically
   useEffect(() => {
@@ -115,7 +150,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Instantiate engine
   const initEngine = useCallback(() => {
     const timeouts = activeLanesTimeoutRef.current;
-    const engine = new GameEngine(map, instrument, {
+    const engine = new GameEngine(preparedMap, instrument, {
       onScoreUpdate: (state) => setScoreState(state),
       onNoteJudged: (noteId, grade, lane) => {
         setLatestJudgement({ grade, lane, key: Date.now() });
@@ -169,7 +204,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     engine.setCalibrationOffset(initialCalibrationRef.current / 1000);
     engineRef.current = engine;
     return engine;
-  }, [map, instrument, audioPlayer, onRunFinished]);
+  }, [preparedMap, instrument, audioPlayer, onRunFinished]);
 
   useEffect(() => {
     const engine = initEngine();
@@ -193,18 +228,21 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   const handleStartGame = useCallback(() => {
     if (!isWaitingForStart) return;
 
-    // 1. Immediately transition out of waiting state & engage monotonic clock bridge
+    // 1. Immediately transition out of waiting state & engage continuous monotonic clock bridge
     setIsWaitingForStart(false);
     kickoffOffsetRef.current = initialStartTime;
     kickoffPerfTimeRef.current = performance.now();
+    audioClockLeadRef.current = 0;
 
-    // 2. Start engine synchronously and register the first tile hit immediately
+    // 2. Start engine synchronously, register first tile hit, and push frame-0 GPU transform
     if (engineRef.current) {
       engineRef.current.start();
       engineRef.current.update(initialStartTime);
       if (firstNote) {
         engineRef.current.handleDirectTileDown(firstNote.id, firstNote.lane);
       }
+      const approach = engineRef.current.getDynamicApproachTime();
+      tilesViewRef.current?.updatePositions(initialStartTime, approach);
     }
 
     // 3. Fire audio playback immediately from the first note's timestamp (non-blocking)
@@ -255,6 +293,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     kickoffPerfTimeRef.current = null;
     kickoffOffsetRef.current = initialStartTime;
+    audioClockLeadRef.current = 0;
     setResumeCountdown(null);
     setIsPaused(false);
     setShowExitConfirm(false);
@@ -262,11 +301,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     setIsWaitingForStart(true);
     setScoreState(createInitialScoreState());
     setCurrentAudioTime(initialStartTime);
-    setNotes(map.notes.map((n) => ({ ...n, hit: false, grade: null })));
+    setNotes(preparedMap.notes.map((n) => ({ ...n, hit: false, grade: null })));
     setLatestJudgement(null);
     setSustainBonus(null);
     initEngine();
-  }, [map, initialStartTime, initEngine]);
+  }, [preparedMap, initialStartTime, initEngine]);
 
   // Auto-pause on browser tab switch or app backgrounding (Safari safe)
   useEffect(() => {
@@ -352,16 +391,19 @@ export const GameContainer: React.FC<GameContainerProps> = ({
 
         if (kickoffPerfTimeRef.current !== null) {
           const elapsedSinceKickoff = (performance.now() - kickoffPerfTimeRef.current) / 1000;
+          const bridgedTime = kickoffOffsetRef.current + elapsedSinceKickoff;
           if (audioTime > kickoffOffsetRef.current + 0.005) {
-            // Hardware audio clock is live — lock 1:1 to real audio time
+            // Hardware audio clock is live — capture any positive lead and decay smoothly
+            audioClockLeadRef.current = Math.max(0, bridgedTime - audioTime);
             kickoffPerfTimeRef.current = null;
-            time = audioTime;
-          } else if (elapsedSinceKickoff <= 0.08) {
-            // Brief 80ms bridge for WebAudio hardware spin-up; never race ahead if YouTube is buffering
-            time = kickoffOffsetRef.current + elapsedSinceKickoff;
+            time = audioTime + audioClockLeadRef.current;
           } else {
-            time = audioTime;
+            // Advance tiles immediately at 60-120fps on frame 1 while audio spins up
+            time = bridgedTime;
           }
+        } else if (audioClockLeadRef.current > 0.001) {
+          audioClockLeadRef.current *= 0.92;
+          time = audioTime + audioClockLeadRef.current;
         }
 
         engineRef.current.update(time);

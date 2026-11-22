@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
+import React, { memo, forwardRef, useImperativeHandle, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Note } from '@/types/game';
 import { GAMEPLAY_CONFIG } from '@/config/gameplay';
 import { Play } from 'lucide-react';
@@ -151,9 +151,9 @@ export const GuitarTilesView = memo(
         [applyPositions]
       );
 
-      useEffect(() => {
+      useLayoutEffect(() => {
         applyPositions(lastTimeRef.current, lastApproachRef.current);
-      }, [visibleNotes.length, isWaitingForStart, applyPositions]);
+      });
 
       const setTileRef = useCallback((noteId: string, el: HTMLDivElement | null) => {
         if (el) {

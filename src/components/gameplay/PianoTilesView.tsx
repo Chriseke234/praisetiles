@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
+import React, { memo, forwardRef, useImperativeHandle, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Note } from '@/types/game';
 import { GAMEPLAY_CONFIG } from '@/config/gameplay';
 import { Crown, Play } from 'lucide-react';
@@ -167,10 +167,11 @@ export const PianoTilesView = memo(
         [applyPositions]
       );
 
-      // Re-apply positions immediately after React mounts newly entering tiles
-      useEffect(() => {
+      // Re-apply live GPU transforms synchronously before paint whenever React re-renders
+      // (e.g. when start banner closes or activeLanes flashes) so tiles never stall or snap back
+      useLayoutEffect(() => {
         applyPositions(lastTimeRef.current, lastApproachRef.current);
-      }, [visibleNotes.length, isWaitingForStart, applyPositions]);
+      });
 
       const setTileRef = useCallback((noteId: string, el: HTMLDivElement | null) => {
         if (el) {

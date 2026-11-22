@@ -171,20 +171,14 @@ export class GameAudioPlayer {
 
   /**
    * Returns exact audio position in seconds, decoupled from React state or frame rendering.
-   * Compensates for WebAudio hardware output latency (baseLatency + outputLatency)
-   * so tiles hit the receptor in lockstep with audible sound.
+   * Advances immediately from frame 1 without stalling on startup.
    */
   public getCurrentTime(): number {
     if (!this.isPlaying || !this.ctx) {
       return this.pauseOffset;
     }
-    const elapsed = this.ctx.currentTime - this.startAudioCtxTime;
-    const ctxWithLatency = this.ctx as AudioContext & { outputLatency?: number };
-    const hardwareLatency = Math.min(
-      0.25,
-      Math.max(0, (ctxWithLatency.baseLatency || 0) + (ctxWithLatency.outputLatency || 0))
-    );
-    return Math.max(0, this.pauseOffset + Math.max(0, elapsed - hardwareLatency));
+    const elapsed = Math.max(0, this.ctx.currentTime - this.startAudioCtxTime);
+    return Math.max(0, this.pauseOffset + elapsed);
   }
 
   public getIsPlaying(): boolean {

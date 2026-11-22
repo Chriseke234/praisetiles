@@ -54,11 +54,13 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   onExit,
 }) => {
   const { stats } = useAuth();
+  const firstNote = map.notes.length > 0 ? map.notes[0] : null;
+  const initialStartTime = firstNote ? firstNote.time : 0;
+
   const [isWaitingForStart, setIsWaitingForStart] = useState(true);
-  const [startCountdown, setStartCountdown] = useState<number | null>(null);
   const [failedResult, setFailedResult] = useState<RunResult | null>(null);
   const [scoreState, setScoreState] = useState<ScoreState>(createInitialScoreState);
-  const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
+  const [currentAudioTime, setCurrentAudioTime] = useState<number>(initialStartTime);
   const [notes, setNotes] = useState<readonly Note[]>(() =>
     map.notes.map((n) => ({ ...n, hit: false, grade: null }))
   );
@@ -97,7 +99,9 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   const sustainBonusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialCalibrationRef = useRef<number>(calibrationMs);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const startCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Monotonic clock bridge so tiles begin falling on frame 1 even while WebAudio/YouTube buffers
+  const kickoffPerfTimeRef = useRef<number | null>(null);
+  const kickoffOffsetRef = useRef<number>(initialStartTime);
 
   // Update calibration offset on active engine dynamically
   useEffect(() => {
@@ -176,49 +180,36 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       if (judgementTimeoutRef.current) clearTimeout(judgementTimeoutRef.current);
       if (sustainBonusTimeoutRef.current) clearTimeout(sustainBonusTimeoutRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
+      kickoffPerfTimeRef.current = null;
       timeouts.forEach(clearTimeout);
     };
   }, [initEngine, audioPlayer]);
 
-  // Start match kickoff smoothly with visual 3-2-1 countdown.
-  // IMPORTANT: isWaitingForStart stays TRUE during countdown so the RAF loop
-  // does not fire (avoids 60 state-updates/s with time=0 while engine is idle).
-  // It is only set to false when engine.start() + audioPlayer.play() fire.
-  const handleStartGame = useCallback(async () => {
-    if (!isWaitingForStart || startCountdown !== null) return;
+  // Piano Tiles Classic instant kickoff:
+  // Tapping the first tile starts audio, engine, and tile flow on the exact same frame
+  // with zero artificial countdown or buffer lag.
+  const handleStartGame = useCallback(() => {
+    if (!isWaitingForStart) return;
 
-    // Warm up audio context on user gesture (must happen synchronously)
-    if (typeof audioPlayer.ensureContext === 'function') {
-      try {
-        await audioPlayer.ensureContext();
-      } catch {}
+    // 1. Immediately transition out of waiting state & engage monotonic clock bridge
+    setIsWaitingForStart(false);
+    kickoffOffsetRef.current = initialStartTime;
+    kickoffPerfTimeRef.current = performance.now();
+
+    // 2. Start engine synchronously and register the first tile hit immediately
+    if (engineRef.current) {
+      engineRef.current.start();
+      engineRef.current.update(initialStartTime);
+      if (firstNote) {
+        engineRef.current.handleDirectTileDown(firstNote.id, firstNote.lane);
+      }
     }
 
-    setStartCountdown(3);
-    let count = 3;
-    if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
-
-    startCountdownIntervalRef.current = setInterval(async () => {
-      count -= 1;
-      if (count > 0) {
-        setStartCountdown(count);
-      } else {
-        if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
-        setStartCountdown(null);
-
-        // Only NOW allow the RAF loop to run — engine is about to start
-        setIsWaitingForStart(false);
-
-        if (engineRef.current) {
-          engineRef.current.start();
-        }
-        await audioPlayer.play(0, () => {
-          engineRef.current?.handleCompletion();
-        });
-      }
-    }, 700);
-  }, [isWaitingForStart, startCountdown, audioPlayer]);
+    // 3. Fire audio playback immediately from the first note's timestamp (non-blocking)
+    void audioPlayer.play(initialStartTime, () => {
+      engineRef.current?.handleCompletion();
+    });
+  }, [isWaitingForStart, initialStartTime, firstNote, audioPlayer]);
 
   // Pause match safely: freeze audio clock, engine progression, input
   const handlePause = useCallback(() => {
@@ -260,20 +251,20 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Restart song cleanly
   const handleRestart = useCallback(() => {
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    if (startCountdownIntervalRef.current) clearInterval(startCountdownIntervalRef.current);
+    kickoffPerfTimeRef.current = null;
+    kickoffOffsetRef.current = initialStartTime;
     setResumeCountdown(null);
-    setStartCountdown(null);
     setIsPaused(false);
     setShowExitConfirm(false);
     setFailedResult(null);
     setIsWaitingForStart(true);
     setScoreState(createInitialScoreState());
-    setCurrentAudioTime(0);
+    setCurrentAudioTime(initialStartTime);
     setNotes(map.notes.map((n) => ({ ...n, hit: false, grade: null })));
     setLatestJudgement(null);
     setSustainBonus(null);
     initEngine();
-  }, [map, initEngine]);
+  }, [map, initialStartTime, initEngine]);
 
   // Auto-pause on browser tab switch or app backgrounding (Safari safe)
   useEffect(() => {
@@ -303,7 +294,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Direct Tile Interaction Handlers (Direct Touch & Click only - NO keyboard)
   const handleTilePointerDown = useCallback(
     (noteId: string, lane: number) => {
-      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null) return;
       if (isWaitingForStart) {
         handleStartGame();
         return;
@@ -312,31 +303,34 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         engineRef.current.handleDirectTileDown(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown, startCountdown, isWaitingForStart, handleStartGame]
+    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
   );
 
   const handleTilePointerUp = useCallback(
     (noteId: string, lane: number) => {
-      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null) return;
       if (engineRef.current) {
         engineRef.current.handleDirectTileUp(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown, startCountdown]
+    [isPaused, resumeCountdown]
   );
 
   const handleLanePointerDown = useCallback(
     (lane: number) => {
-      if (isPaused || resumeCountdown !== null || startCountdown !== null) return;
+      if (isPaused || resumeCountdown !== null) return;
       if (isWaitingForStart) {
-        handleStartGame();
+        // Only start when tapping the start tile's lane (prevents accidental miss-lane starts)
+        if (!firstNote || lane === firstNote.lane) {
+          handleStartGame();
+        }
         return;
       }
       if (engineRef.current) {
         engineRef.current.handleLaneInput(lane);
       }
     },
-    [isPaused, resumeCountdown, startCountdown, isWaitingForStart, handleStartGame]
+    [isPaused, resumeCountdown, isWaitingForStart, firstNote, handleStartGame]
   );
 
   const handlePointerLeaveArea = useCallback(() => {
@@ -345,11 +339,25 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     }
   }, []);
 
-  // Main high-precision animation loop
+  // Main high-precision animation loop with zero-lag monotonic kickoff bridge
   useEffect(() => {
     const loop = () => {
       if (engineRef.current && !isWaitingForStart && !failedResult && !isPaused) {
-        const time = audioPlayer.getCurrentTime();
+        const audioTime = audioPlayer.getCurrentTime();
+        let time = audioTime;
+
+        if (kickoffPerfTimeRef.current !== null) {
+          const elapsedSinceKickoff = (performance.now() - kickoffPerfTimeRef.current) / 1000;
+          if (audioTime > kickoffOffsetRef.current + 0.01) {
+            // Audio clock is live and advancing — lock directly to hardware audio clock
+            kickoffPerfTimeRef.current = null;
+            time = audioTime;
+          } else {
+            // Bridge brief audio buffer spin-up smoothly so tiles NEVER freeze on frame 1
+            time = kickoffOffsetRef.current + elapsedSinceKickoff;
+          }
+        }
+
         setCurrentAudioTime(time);
         engineRef.current.update(time);
       }
@@ -527,11 +535,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({
           />
         )}
 
-        {/* 3-2-1 Countdown Overlay for Kickoff or Resume */}
-        {(startCountdown !== null || resumeCountdown !== null) && (
+        {/* 3-2-1 Countdown Overlay for Resume from Pause */}
+        {resumeCountdown !== null && (
           <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn pointer-events-none">
             <div className="text-7xl sm:text-8xl font-black text-amber-300 animate-ping font-mono drop-shadow-[0_0_35px_rgba(251,191,36,0.9)]">
-              {startCountdown ?? resumeCountdown}
+              {resumeCountdown}
             </div>
             <p className="text-xs uppercase tracking-widest text-purple-200 mt-4 font-bold">
               GET READY...

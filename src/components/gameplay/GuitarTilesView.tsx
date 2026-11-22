@@ -43,6 +43,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
   artist,
 }) => {
   const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
+  const firstNoteId = notes.length > 0 ? notes[0].id : null;
 
   // Visible notes within approach window (including recently hit tiles for 150ms hit burst)
   const visibleNotes = notes.filter((n) => {
@@ -55,7 +56,9 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
 
     // Hit short notes stay visible for 150ms to display hit burst feedback
     if (n.hit && n.type !== 'long') {
-      const hitAge = (n as any).hitTimestamp ? Date.now() - (n as any).hitTimestamp : 999;
+      const hitAge = (n as unknown as { hitTimestamp?: number }).hitTimestamp
+        ? Date.now() - ((n as unknown as { hitTimestamp?: number }).hitTimestamp ?? 0)
+        : 999;
       return hitAge < 150;
     }
 
@@ -116,37 +119,36 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
           );
         })}
 
-        {/* Floating Song Intro Banner (Visible before player taps START) */}
-        {isWaitingForStart && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-            <div className="px-6 py-6 rounded-3xl bg-[#1c0f05]/90 border border-amber-500/40 shadow-[0_0_40px_rgba(245,158,11,0.3)] backdrop-blur-md max-w-sm w-full space-y-2 text-center">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 inline-block">
-                Guitar Arena
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide drop-shadow-md">
+        {/* Non-blocking Floating Song Intro Banner (Classic Kickoff) */}
+        {isWaitingForStart && firstNoteId && (
+          <div className="absolute top-4 inset-x-4 z-30 flex justify-center pointer-events-none animate-fadeIn">
+            <div className="px-5 py-3.5 rounded-2xl bg-[#1c0f05]/90 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.3)] backdrop-blur-md max-w-xs w-full text-center space-y-1">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide truncate">
                 {songTitle || 'Praise Track'}
               </h2>
-              <p className="text-xs text-amber-300 font-semibold tracking-wider">
+              <p className="text-[11px] text-amber-300 font-semibold tracking-wider truncate">
                 {artist || 'Acoustic Worship'}
               </p>
-
-              <div className="pt-4">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartGame?.();
-                  }}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] hover:scale-102 active:scale-98 transition-transform cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Play className="w-4 h-4 fill-black" />
-                  <span>START PRAISE</span>
-                </button>
-              </div>
-
-              <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap start to begin • Tiles will start falling to the rhythm
+              <p className="text-[10px] text-amber-200/90 font-bold uppercase tracking-widest pt-1">
+                Tap the START tile below to begin
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Fallback Start Button if map has no notes */}
+        {isWaitingForStart && !firstNoteId && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartGame?.();
+              }}
+              className="py-3.5 px-8 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] cursor-pointer flex items-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-black" />
+              <span>START PRAISE</span>
+            </button>
           </div>
         )}
 
@@ -157,6 +159,7 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
           const duration = note.duration ?? 0;
           const lanePercent = note.lane * 25;
           const hitLinePercent = 88;
+          const isStartTile = isWaitingForStart && note.id === firstNoteId;
 
           if (isLong) {
             // Sustained Long Guitar Tile (Extended Fret Beam)
@@ -244,6 +247,10 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                     <span className="relative z-10 text-xs font-mono font-black text-amber-950 drop-shadow-[0_0_4px_#fff]">
                       {Math.round(progress * 100)}%
                     </span>
+                  ) : isStartTile ? (
+                    <span className="relative z-10 text-[10px] font-black tracking-widest uppercase text-black bg-yellow-200 px-2 py-0.5 rounded-full shadow-md animate-pulse">
+                      START
+                    </span>
                   ) : (
                     <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none">
                       <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
@@ -281,25 +288,40 @@ export const GuitarTilesView: React.FC<GuitarTilesViewProps> = memo(({
                 // Instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              className="px-2 z-20 cursor-pointer h-28 sm:h-36 py-2 -my-2"
+              className={`px-2 cursor-pointer h-28 sm:h-36 py-2 -my-2 ${isStartTile ? 'z-30' : 'z-20'}`}
             >
               <div
                 className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-100 ${
                   isHitBurst
                     ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-300 to-yellow-400 shadow-[0_0_35px_rgba(250,204,21,0.95)] scale-105'
+                    : isStartTile
+                    ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 shadow-[0_0_32px_rgba(250,204,21,0.95)]'
                     : 'border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-[0_4px_20px_rgba(250,204,21,0.5)]'
                 }`}
               >
                 {/* Surface Ping on Hit */}
-                {isHitBurst && (
-                  <div className="absolute inset-0 bg-white/50 animate-ping rounded-2xl pointer-events-none" />
+                {(isHitBurst || (isStartTile && !reducedMotion)) && (
+                  <div className="absolute inset-0 bg-white/30 animate-pulse rounded-2xl pointer-events-none" />
                 )}
 
-                {/* Center pearl inlay */}
-                <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none mb-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
-                </div>
-                <div className="w-1/2 h-1 bg-yellow-200/60 rounded-full pointer-events-none" />
+                {isStartTile ? (
+                  <div className="relative z-10 flex flex-col items-center justify-center gap-1 px-1 text-center pointer-events-none">
+                    <Play className="w-5 h-5 text-black fill-black" />
+                    <span className="text-[10px] sm:text-xs font-black tracking-widest uppercase text-black leading-tight">
+                      TAP TO
+                      <br />
+                      START
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Center pearl inlay */}
+                    <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.8)] pointer-events-none mb-1">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
+                    </div>
+                    <div className="w-1/2 h-1 bg-yellow-200/60 rounded-full pointer-events-none" />
+                  </>
+                )}
               </div>
             </div>
           );

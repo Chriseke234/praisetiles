@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useKeyBindings } from '@/hooks/useKeyBindings';
 import {
@@ -47,6 +48,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [compWins, setCompWins] = useState<number>(0);
   const [compMatches, setCompMatches] = useState<number>(0);
   const [isProvisional, setIsProvisional] = useState<boolean>(true);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
 
   // Settings & Privacy State
   const [displayNameInput, setDisplayNameInput] = useState<string>('');
@@ -88,6 +90,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setCompMatches(data.ranked_matches_played ?? 0);
                 setIsProvisional(data.provisional ?? true);
               }
+            });
+
+          sb.from('tournament_organizers')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('role', 'platform_admin')
+            .maybeSingle()
+            .then(({ data }) => {
+              setIsPlatformAdmin(Boolean(data));
             });
         }
       });
@@ -813,18 +824,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </button>
             </div>
           ) : (
-            <div className="w-full flex items-center justify-between">
-              <span className="text-[11px] text-gray-500">PraiseTiles v1.0.0</span>
-              <button
-                onClick={() => {
-                  signOut();
-                  onClose();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-rose-400 hover:text-rose-300 text-xs font-semibold transition"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Sign Out
-              </button>
+            <div className="w-full flex items-center justify-between gap-2">
+              <span className="text-[11px] text-gray-500">PraiseTiles v1.1.0</span>
+              <div className="flex items-center gap-2">
+                {isPlatformAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={onClose}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition"
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    signOut();
+                    onClose();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-rose-400 hover:text-rose-300 text-xs font-semibold transition"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </button>
+              </div>
             </div>
           )}
         </div>

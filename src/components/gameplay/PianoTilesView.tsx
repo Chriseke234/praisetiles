@@ -46,6 +46,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
 }) => {
   const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
   const hitLinePercent = 88;
+  const firstNoteId = notes.length > 0 ? notes[0].id : null;
 
   // Filter notes that are within visible approach window (and include recently hit tiles for 150ms hit burst)
   const visibleNotes = notes.filter((n) => {
@@ -58,7 +59,9 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
 
     // Hit short notes stay visible for 150ms to display tactical hit burst feedback
     if (n.hit && n.type !== 'long') {
-      const hitAge = (n as any).hitTimestamp ? Date.now() - (n as any).hitTimestamp : 999;
+      const hitAge = (n as unknown as { hitTimestamp?: number }).hitTimestamp
+        ? Date.now() - ((n as unknown as { hitTimestamp?: number }).hitTimestamp ?? 0)
+        : 999;
       return hitAge < 150;
     }
 
@@ -103,41 +106,40 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
           );
         })}
 
-        {/* Floating Song Intro Banner (Visible before player taps START) */}
-        {isWaitingForStart && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-            <div className="px-6 py-6 rounded-3xl bg-[#140b2e]/90 border border-purple-500/40 shadow-[0_0_40px_rgba(139,92,246,0.3)] backdrop-blur-md max-w-sm w-full space-y-2 text-center">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 inline-block">
-                Solo Arena
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide drop-shadow-md">
+        {/* Non-blocking Floating Song Intro Banner (Piano Tiles Classic Kickoff) */}
+        {isWaitingForStart && firstNoteId && (
+          <div className="absolute top-4 inset-x-4 z-30 flex justify-center pointer-events-none animate-fadeIn">
+            <div className="px-5 py-3.5 rounded-2xl bg-[#140b2e]/90 border border-purple-500/40 shadow-[0_0_30px_rgba(139,92,246,0.3)] backdrop-blur-md max-w-xs w-full text-center space-y-1">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide truncate">
                 {songTitle || 'Praise Song'}
               </h2>
-              <p className="text-xs text-purple-300 font-semibold tracking-wider">
+              <p className="text-[11px] text-purple-300 font-semibold tracking-wider truncate">
                 {artist || 'Gospel Melody'}
               </p>
-              <div className="flex items-center justify-center gap-1.5 pt-1 text-xs font-mono font-bold text-amber-300">
-                <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <span>Highscore: {highScore > 0 ? highScore.toLocaleString() : '---'}</span>
+              <div className="flex items-center justify-center gap-1.5 pt-0.5 text-[11px] font-mono font-bold text-amber-300">
+                <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                <span>Best: {highScore > 0 ? highScore.toLocaleString() : '---'}</span>
               </div>
-
-              <div className="pt-4">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartGame?.();
-                  }}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] hover:scale-102 active:scale-98 transition-transform cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Play className="w-4 h-4 fill-black" />
-                  <span>START PRAISE</span>
-                </button>
-              </div>
-
-              <p className="text-[10px] text-gray-400 font-medium pt-1">
-                Tap start to begin • Tiles will start falling to the rhythm
+              <p className="text-[10px] text-amber-300/90 font-bold uppercase tracking-widest pt-1">
+                Tap the START tile below to begin
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Fallback Start Button when map has no notes */}
+        {isWaitingForStart && !firstNoteId && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartGame?.();
+              }}
+              className="py-3.5 px-8 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] cursor-pointer flex items-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-black" />
+              <span>START PRAISE</span>
+            </button>
           </div>
         )}
 
@@ -147,6 +149,7 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
           const isLong = note.type === 'long' && (note.duration ?? 0) > 0;
           const duration = note.duration ?? 0;
           const lanePercent = note.lane * 25;
+          const isStartTile = isWaitingForStart && note.id === firstNoteId;
 
           if (isLong) {
             // Sustained Long Tile (Piano Tiles 2 Rounded Cap & Luminous Tail)
@@ -233,10 +236,14 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                     />
                   )}
 
-                  {/* Target Ripple / Bullseye Rings or Progress Percent */}
+                  {/* Target Ripple / Bullseye Rings, Start Label, or Progress Percent */}
                   {isHolding ? (
                     <span className="relative z-10 text-xs font-mono font-black text-amber-200 drop-shadow-[0_0_8px_#000]">
                       {Math.round(progress * 100)}%
+                    </span>
+                  ) : isStartTile ? (
+                    <span className="relative z-10 text-[10px] font-black tracking-widest uppercase text-black bg-amber-300 px-2 py-0.5 rounded-full shadow-md animate-pulse">
+                      START
                     </span>
                   ) : (
                     <div className="relative w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center shadow-sm pointer-events-none">
@@ -276,12 +283,14 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                 // Instantaneous scoring
                 onTilePointerDown(note.id, note.lane);
               }}
-              className="px-1 z-20 cursor-pointer h-28 sm:h-36 py-2 -my-2"
+              className={`px-1 cursor-pointer h-28 sm:h-36 py-2 -my-2 ${isStartTile ? 'z-30' : 'z-20'}`}
             >
               <div
                 className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden ${
                   isHitBurst
                     ? 'border-amber-200 bg-gradient-to-b from-amber-300 via-amber-400 to-yellow-500 shadow-[0_0_24px_rgba(251,191,36,0.9)] scale-105 transition-transform duration-75'
+                    : isStartTile
+                    ? 'border-amber-300 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 shadow-[0_0_32px_rgba(251,191,36,0.95)]'
                     : 'border-amber-400/80 bg-gradient-to-b from-[#2d1659] via-[#160c2e] to-[#080413] shadow-[0_4px_16px_rgba(251,191,36,0.35)]'
                 }`}
               >
@@ -289,19 +298,32 @@ export const PianoTilesView: React.FC<PianoTilesViewProps> = memo(({
                 <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none" />
 
                 {/* Tactile Hit Pulse Ping */}
-                {isHitBurst && (
-                  <div className="absolute inset-0 bg-white/40 animate-ping rounded-2xl pointer-events-none" />
+                {(isHitBurst || (isStartTile && !reducedMotion)) && (
+                  <div className="absolute inset-0 bg-white/25 animate-pulse rounded-2xl pointer-events-none" />
                 )}
 
-                {/* Central Radiant Golden Rhythm Pill */}
-                <div
-                  className={`h-2.5 rounded-full pointer-events-none mb-1 ${
-                    isHitBurst
-                      ? 'w-3/4 bg-white shadow-[0_0_12px_#ffffff]'
-                      : 'w-1/2 bg-gradient-to-r from-amber-400 via-yellow-300 to-purple-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'
-                  }`}
-                />
-                <div className="w-1/4 h-1 bg-amber-400/50 rounded-full pointer-events-none" />
+                {isStartTile ? (
+                  <div className="relative z-10 flex flex-col items-center justify-center gap-1 px-1 text-center pointer-events-none">
+                    <Play className="w-5 h-5 text-black fill-black" />
+                    <span className="text-[10px] sm:text-xs font-black tracking-widest uppercase text-black leading-tight">
+                      TAP TO
+                      <br />
+                      START
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Central Radiant Golden Rhythm Pill */}
+                    <div
+                      className={`h-2.5 rounded-full pointer-events-none mb-1 ${
+                        isHitBurst
+                          ? 'w-3/4 bg-white shadow-[0_0_12px_#ffffff]'
+                          : 'w-1/2 bg-gradient-to-r from-amber-400 via-yellow-300 to-purple-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'
+                      }`}
+                    />
+                    <div className="w-1/4 h-1 bg-amber-400/50 rounded-full pointer-events-none" />
+                  </>
+                )}
               </div>
             </div>
           );

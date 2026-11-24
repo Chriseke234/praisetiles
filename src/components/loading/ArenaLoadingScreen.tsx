@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BrandLogo } from '@/components/common/BrandLogo';
-import { PraiseMascot, MascotPose } from '@/components/common/PraiseMascot';
+import type { MascotPose } from '@/components/common/PraiseMascot';
 import { AnimatedVinyl } from './AnimatedVinyl';
 import { RhythmTilesMiniature } from './RhythmTilesMiniature';
 import { ArenaProgressBar } from './ArenaProgressBar';
@@ -37,15 +37,6 @@ export interface ArenaLoadingScreenProps {
   className?: string;
 }
 
-const DEFAULT_ROTATING_MESSAGES = [
-  'Tuning the arena...',
-  'Getting your rhythm ready...',
-  'Preparing your next performance...',
-  'Warming up the instruments...',
-  'Loading your gospel experience...',
-  'The arena is almost ready...',
-];
-
 export const ArenaLoadingScreen: React.FC<ArenaLoadingScreenProps> = ({
   title,
   subtitle,
@@ -55,24 +46,13 @@ export const ArenaLoadingScreen: React.FC<ArenaLoadingScreenProps> = ({
   progress,
   statusText,
   substatusText,
-  mascotPose = 'listening',
   timeoutMs = 12000,
   onRetry,
   onSkip,
   reducedMotion = false,
   className = '',
 }) => {
-  const [messageIndex, setMessageIndex] = useState(0);
   const [hasTimedOut, setHasTimedOut] = useState(false);
-
-  // Rotate helpful messages every 3.2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % DEFAULT_ROTATING_MESSAGES.length);
-    }, 3200);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Failsafe timeout handler
   useEffect(() => {
@@ -85,7 +65,7 @@ export const ArenaLoadingScreen: React.FC<ArenaLoadingScreenProps> = ({
     return () => clearTimeout(timer);
   }, [timeoutMs]);
 
-  const activeMessage = statusText || DEFAULT_ROTATING_MESSAGES[messageIndex];
+  const activeMessage = statusText || 'Entering Gospel Rhythm Arena...';
 
   return (
     <div
@@ -160,24 +140,8 @@ export const ArenaLoadingScreen: React.FC<ArenaLoadingScreenProps> = ({
         </div>
       </main>
 
-      {/* 3. BOTTOM FOOTER: Mascot + Progress Bar + Failsafe Notice */}
+      {/* 3. BOTTOM FOOTER: Calibrated Progress Bar + Failsafe Notice */}
       <footer className="relative z-10 w-full max-w-xl pb-2 sm:pb-6 space-y-4">
-        {/* Aria Mascot Presentation */}
-        <div className="flex items-center justify-center gap-3">
-          <PraiseMascot
-            pose={mascotPose}
-            size="sm"
-            className="shrink-0 transition-transform hover:scale-105"
-          />
-
-          <div className="relative px-3.5 py-2 rounded-2xl bg-[#141026]/90 border border-purple-500/30 text-left shadow-lg backdrop-blur-md min-w-[220px] max-w-xs sm:max-w-sm">
-            <p className="text-xs font-bold text-amber-300 transition-opacity duration-300">
-              {activeMessage}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">Aria &bull; Sanctuary Companion</p>
-          </div>
-        </div>
-
         {/* Progress Bar */}
         <ArenaProgressBar
           progress={progress}

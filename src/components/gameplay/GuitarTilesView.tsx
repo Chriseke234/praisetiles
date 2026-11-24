@@ -210,38 +210,6 @@ export const GuitarTilesView = memo(
               );
             })}
 
-            {/* Non-blocking Floating Song Intro Banner */}
-            {isWaitingForStart && firstNoteId && (
-              <div className="absolute top-4 inset-x-4 z-30 flex justify-center pointer-events-none animate-fadeIn">
-                <div className="px-5 py-3.5 rounded-2xl bg-[#1c0f05]/90 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.3)] backdrop-blur-md max-w-xs w-full text-center space-y-1">
-                  <h2 className="text-base sm:text-lg font-black text-white tracking-wide truncate">
-                    {songTitle || 'Praise Track'}
-                  </h2>
-                  <p className="text-[11px] text-amber-300 font-semibold tracking-wider truncate">
-                    {artist || 'Acoustic Worship'}
-                  </p>
-                  <p className="text-[10px] text-amber-200/90 font-bold uppercase tracking-widest pt-1">
-                    Tap the START tile below to begin
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Fallback Start Button */}
-            {isWaitingForStart && !firstNoteId && (
-              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartGame?.();
-                  }}
-                  className="py-3.5 px-8 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-sm tracking-widest uppercase shadow-[0_0_25px_rgba(251,191,36,0.8)] cursor-pointer flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4 fill-black" />
-                  <span>START PRAISE</span>
-                </button>
-              </div>
-            )}
 
             {/* Falling Guitar Tiles (GPU translate3d positioned) */}
             {visibleNotes.map((note) => {
@@ -249,7 +217,6 @@ export const GuitarTilesView = memo(
               const isLong = note.type === 'long' && (note.duration ?? 0) > 0;
               const duration = note.duration ?? 0;
               const lanePercent = note.lane * 25;
-              const isStartTile = isWaitingForStart && note.id === firstNoteId;
               const hitLineY = containerHeightRef.current * HIT_LINE_RATIO;
 
               if (isLong) {
@@ -293,9 +260,7 @@ export const GuitarTilesView = memo(
                       e.stopPropagation();
                       onTilePointerUp(note.id, note.lane);
                     }}
-                    className={`px-2 flex flex-col justify-end cursor-pointer py-2 -my-2 ${
-                      isStartTile ? 'z-30' : 'z-20'
-                    }`}
+                    className="px-2 flex flex-col justify-end cursor-pointer py-2 -my-2 z-20"
                   >
                     <div
                       className={`w-full h-full rounded-t-xl border-x-2 border-t-2 relative overflow-hidden pointer-events-none ${
@@ -328,10 +293,6 @@ export const GuitarTilesView = memo(
                       {isHolding ? (
                         <span className="relative z-10 text-xs font-mono font-black text-amber-950">
                           {Math.round(progress * 100)}%
-                        </span>
-                      ) : isStartTile ? (
-                        <span className="relative z-10 text-[10px] font-black tracking-widest uppercase text-black bg-yellow-200 px-2 py-0.5 rounded-full shadow-md animate-pulse">
-                          START
                         </span>
                       ) : (
                         <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center pointer-events-none">
@@ -367,40 +328,23 @@ export const GuitarTilesView = memo(
                     e.preventDefault();
                     onTilePointerDown(note.id, note.lane);
                   }}
-                  className={`px-2 cursor-pointer h-28 sm:h-36 py-2 -my-2 ${
-                    isStartTile ? 'z-30' : 'z-20'
-                  }`}
+                  className="px-2 cursor-pointer h-28 sm:h-36 py-2 -my-2 z-20"
                 >
                   <div
                     className={`w-full h-full rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden ${
                       isHitBurst
                         ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-300 to-yellow-400 scale-105'
-                        : isStartTile
-                        ? 'border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 shadow-[0_0_28px_rgba(250,204,21,0.9)]'
                         : 'border-yellow-300 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700'
                     }`}
                   >
-                    {(isHitBurst || (isStartTile && !reducedMotion)) && (
+                    {isHitBurst && (
                       <div className="absolute inset-0 bg-white/30 animate-pulse rounded-2xl pointer-events-none" />
                     )}
 
-                    {isStartTile ? (
-                      <div className="relative z-10 flex flex-col items-center justify-center gap-1 px-1 text-center pointer-events-none">
-                        <Play className="w-5 h-5 text-black fill-black" />
-                        <span className="text-[10px] sm:text-xs font-black tracking-widest uppercase text-black leading-tight">
-                          TAP TO
-                          <br />
-                          START
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center pointer-events-none mb-1">
-                          <div className="w-2.5 h-2.5 rounded-full bg-white pointer-events-none" />
-                        </div>
-                        <div className="w-1/2 h-1 bg-yellow-200/60 rounded-full pointer-events-none" />
-                      </>
-                    )}
+                    <div className="w-8 h-8 rounded-full border-2 border-yellow-200 bg-yellow-400/80 flex items-center justify-center pointer-events-none mb-1">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white pointer-events-none" />
+                    </div>
+                    <div className="w-1/2 h-1 bg-yellow-200/60 rounded-full pointer-events-none" />
                   </div>
                 </div>
               );

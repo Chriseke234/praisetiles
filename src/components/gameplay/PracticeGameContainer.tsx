@@ -16,6 +16,7 @@ import { PianoTilesView, TilesViewHandle } from './PianoTilesView';
 import { GuitarTilesView } from './GuitarTilesView';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { GameplayEffectsOverlay } from './GameplayEffectsOverlay';
+import { PauseTasksCard } from './PauseTasksCard';
 import { safeLocalStorage } from '@/lib/storage/safeStorage';
 import {
   Volume2,
@@ -50,36 +51,29 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   onPracticeFinished,
   onExit,
 }) => {
+  // Prepared map: preserve authentic musical timestamps from rhythm analysis
   const preparedMap = useMemo<RhythmMap>(() => {
     if (!map.notes || map.notes.length === 0) return map;
-    const normalizedNotes = map.notes.map((n, idx) => {
-      if (idx === 0) {
-        const nextNote = map.notes[1];
-        const maxLeadGap = 0.85;
-        const alignedTime =
-          nextNote && nextNote.time - n.time > maxLeadGap
-            ? Math.max(0.2, Math.round((nextNote.time - 0.7) * 1000) / 1000)
-            : n.time;
-        return {
-          ...n,
-          time: alignedTime,
-          type: 'short' as const,
-          duration: undefined,
-          sustainProgress: undefined,
-          sustainState: undefined,
-          hit: false,
-          grade: null,
-        };
-      }
-      return { ...n, hit: false, grade: null };
-    });
-    return { ...map, notes: normalizedNotes };
+    return {
+      ...map,
+      notes: map.notes.map((n) => ({ ...n, hit: false, grade: null })),
+    };
   }, [map]);
 
   const firstNote = preparedMap.notes.length > 0 ? preparedMap.notes[0] : null;
-  const initialStartTime = firstNote ? firstNote.time : 0;
+  // Optimal audio start offset so the opening tile flows down naturally from the top of the lanes
+  const initialStartTime = useMemo(() => {
+    if (!firstNote) return 0;
+    if (firstNote.time <= 3.0) return 0;
+    return Math.max(0, Math.round((firstNote.time - 1.75) * 1000) / 1000);
+  }, [firstNote]);
 
-  const [isWaitingForStart, setIsWaitingForStart] = useState(true);
+  // Kickoff Countdown State: 3-2-1 auto-countdown prevents tile stagnation
+  const [startCountdown, setStartCountdown] = useState<number | null>(3);
+  const isWaitingForStart = startCountdown !== null;
+  const hasStartedRef = useRef<boolean>(false);
+  const lastRenderedTimeRef = useRef<number>(initialStartTime);
+
   const [scoreState, setScoreState] = useState<ScoreState>(createInitialScoreState);
   const [currentAudioTime, setCurrentAudioTime] = useState<number>(initialStartTime);
   const [notes, setNotes] = useState<readonly Note[]>(() => preparedMap.notes);
@@ -219,21 +213,22 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     };
   }, [initEngine, audioPlayer]);
 
-  // Piano Tiles Classic instant kickoff: zero countdown, zero buffer lag
-  const handleStartGame = useCallback(() => {
-    if (!isWaitingForStart) return;
+  // Rhythmic Auto-Kickoff:
+  // Starts audio playback and tile flow smoothly at 60-120fps from initialStartTime.
+  const startPlayback = useCallback(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setStartCountdown(null);
 
-    setIsWaitingForStart(false);
     kickoffOffsetRef.current = initialStartTime;
     kickoffPerfTimeRef.current = performance.now();
+    lastRenderedTimeRef.current = initialStartTime;
     audioClockLeadRef.current = 0;
 
     if (engineRef.current) {
       engineRef.current.start();
       engineRef.current.update(initialStartTime);
-      if (firstNote) {
-        engineRef.current.handleDirectTileDown(firstNote.id, firstNote.lane);
-      }
       const approach = engineRef.current.getDynamicApproachTime();
       tilesViewRef.current?.updatePositions(initialStartTime, approach);
     }
@@ -241,7 +236,33 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     void audioPlayer.play(initialStartTime, () => {
       engineRef.current?.handleCompletion();
     });
-  }, [isWaitingForStart, initialStartTime, firstNote, audioPlayer]);
+  }, [initialStartTime, audioPlayer]);
+
+  const handleStartGame = useCallback(() => {
+    startPlayback();
+  }, [startPlayback]);
+
+  // Automatic 3-2-1 kickoff countdown on mount so tiles never sit stagnant
+  useEffect(() => {
+    let count = 3;
+    setStartCountdown(3);
+    hasStartedRef.current = false;
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+    countdownIntervalRef.current = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setStartCountdown(count);
+      } else {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        startPlayback();
+      }
+    }, 700);
+
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [startPlayback]);
 
   const handlePause = useCallback(() => {
     if (isWaitingForStart || isPaused) return;
@@ -279,12 +300,14 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
 
   const handleRestart = useCallback(() => {
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    hasStartedRef.current = false;
     kickoffPerfTimeRef.current = null;
     kickoffOffsetRef.current = initialStartTime;
+    lastRenderedTimeRef.current = initialStartTime;
     audioClockLeadRef.current = 0;
     setResumeCountdown(null);
+    setStartCountdown(3);
     setIsPaused(false);
-    setIsWaitingForStart(true);
     setScoreState(createInitialScoreState());
     setCurrentAudioTime(initialStartTime);
     setNotes(preparedMap.notes.map((n) => ({ ...n, hit: false, grade: null })));
@@ -292,7 +315,18 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     setTimingFeedback(null);
     setSustainBonus(null);
     initEngine();
-  }, [preparedMap, initialStartTime, initEngine]);
+
+    let count = 3;
+    countdownIntervalRef.current = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setStartCountdown(count);
+      } else {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        startPlayback();
+      }
+    }, 700);
+  }, [preparedMap, initialStartTime, initEngine, startPlayback]);
 
   // Tab switch auto-pause
   useEffect(() => {
@@ -309,15 +343,15 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   const handleTilePointerDown = useCallback(
     (noteId: string, lane: number) => {
       if (isPaused || resumeCountdown !== null) return;
-      if (isWaitingForStart) {
-        handleStartGame();
+      if (startCountdown !== null) {
+        startPlayback();
         return;
       }
       if (engineRef.current) {
         engineRef.current.handleDirectTileDown(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown, isWaitingForStart, handleStartGame]
+    [isPaused, resumeCountdown, startCountdown, startPlayback]
   );
 
   const handleTilePointerUp = useCallback(
@@ -333,31 +367,29 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
   const handleLanePointerDown = useCallback(
     (lane: number) => {
       if (isPaused || resumeCountdown !== null) return;
-      if (isWaitingForStart) {
-        if (!firstNote || lane === firstNote.lane) {
-          handleStartGame();
-        }
+      if (startCountdown !== null) {
+        startPlayback();
         return;
       }
       if (engineRef.current) {
         engineRef.current.handleLaneInput(lane);
       }
     },
-    [isPaused, resumeCountdown, isWaitingForStart, firstNote, handleStartGame]
+    [isPaused, resumeCountdown, startCountdown, startPlayback]
   );
 
   // High-precision 60-120fps animation loop:
   // Drives tile GPU transforms directly via tilesViewRef (zero per-frame React re-renders).
   useEffect(() => {
     const loop = (nowMs: number) => {
-      if (engineRef.current && !isWaitingForStart && !isPaused) {
+      if (engineRef.current && hasStartedRef.current && !isPaused) {
         const audioTime = audioPlayer.getCurrentTime();
         let time = audioTime;
 
         if (kickoffPerfTimeRef.current !== null) {
           const elapsedSinceKickoff = (performance.now() - kickoffPerfTimeRef.current) / 1000;
           const bridgedTime = kickoffOffsetRef.current + elapsedSinceKickoff;
-          if (audioTime > kickoffOffsetRef.current + 0.005) {
+          if (audioTime > kickoffOffsetRef.current + 0.01) {
             audioClockLeadRef.current = Math.max(0, bridgedTime - audioTime);
             kickoffPerfTimeRef.current = null;
             time = audioTime + audioClockLeadRef.current;
@@ -365,9 +397,15 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
             time = bridgedTime;
           }
         } else if (audioClockLeadRef.current > 0.001) {
-          audioClockLeadRef.current *= 0.92;
+          audioClockLeadRef.current *= 0.95;
           time = audioTime + audioClockLeadRef.current;
         }
+
+        // Strict monotonicity check: time must NEVER freeze or go backwards
+        if (time < lastRenderedTimeRef.current) {
+          time = lastRenderedTimeRef.current + 0.001;
+        }
+        lastRenderedTimeRef.current = time;
 
         engineRef.current.update(time);
         const approach = engineRef.current.getDynamicApproachTime();
@@ -386,7 +424,67 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [audioPlayer, isWaitingForStart, isPaused]);
+  }, [audioPlayer, isPaused]);
+
+  // Keyboard controls (D, F, J, K or custom keys + Space for pause/resume/countdown)
+  useEffect(() => {
+    let bindings = ['d', 'f', 'j', 'k'];
+    try {
+      const saved = safeLocalStorage.getItem('praisetiles_keybindings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === 4) {
+          bindings = parsed.map((k: string) => k.toLowerCase());
+        }
+      }
+    } catch {}
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const key = e.key.toLowerCase();
+
+      if (e.code === 'Space' || key === ' ') {
+        e.preventDefault();
+        if (startCountdown !== null) {
+          startPlayback();
+          return;
+        }
+        if (isPaused) {
+          handleResume();
+        } else {
+          handlePause();
+        }
+        return;
+      }
+
+      if (startCountdown !== null) {
+        startPlayback();
+        return;
+      }
+
+      const laneIdx = bindings.indexOf(key);
+      if (laneIdx !== -1) {
+        e.preventDefault();
+        handleLanePointerDown(laneIdx);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const laneIdx = bindings.indexOf(key);
+      if (laneIdx !== -1) {
+        e.preventDefault();
+        engineRef.current?.handlePointerCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [startCountdown, isPaused, startPlayback, handleResume, handlePause, handleLanePointerDown]);
 
   return (
     <div className="relative w-full h-[100dvh] min-h-[100dvh] flex flex-col justify-between bg-[#061214] text-white overflow-hidden select-none">
@@ -492,6 +590,23 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
           />
         )}
 
+        {/* 3-2-1 Kickoff Auto-Countdown Overlay */}
+        {startCountdown !== null && (
+          <div
+            onClick={startPlayback}
+            className="absolute inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center animate-fadeIn cursor-pointer"
+          >
+            <div className="text-7xl sm:text-9xl font-black text-emerald-300 animate-ping font-mono drop-shadow-[0_0_40px_rgba(52,211,153,0.9)]">
+              {startCountdown}
+            </div>
+            <p className="text-xs uppercase tracking-widest text-emerald-200 mt-6 font-bold flex items-center gap-2">
+              <span>GET READY</span>
+              <span className="text-emerald-400">&bull;</span>
+              <span className="text-[10px] text-gray-400">TAP ANYWHERE TO SKIP</span>
+            </p>
+          </div>
+        )}
+
         {/* 3-2-1 Countdown Overlay for Resume from Pause */}
         {resumeCountdown !== null && (
           <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn pointer-events-none">
@@ -515,6 +630,9 @@ export const PracticeGameContainer: React.FC<PracticeGameContainerProps> = ({
                 <h3 className="text-2xl font-black text-white tracking-wide">Take a Breath</h3>
                 <p className="text-xs text-emerald-300">{map.songTitle}</p>
               </div>
+
+              {/* Active Player Tasks */}
+              <PauseTasksCard />
 
               <div className="space-y-2 pt-2">
                 <button

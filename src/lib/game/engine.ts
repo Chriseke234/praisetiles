@@ -463,7 +463,7 @@ export class GameEngine {
     const goodWindow = GAMEPLAY_CONFIG.TIMING_WINDOWS.GOOD_SEC;
     // Buffer window dynamically scales with approach time (capped at 0.70s) so fast scrolls register cleanly while distant taps (>0.70s) still correctly register as incorrect taps
     const approachTime = this.getDynamicApproachTime();
-    const earlyBufferSec = Math.min(0.70, Math.max(0.50, approachTime * 0.45));
+    const earlyBufferSec = Math.min(0.70, Math.max(0.50, approachTime * 0.58));
     // Apply user audio-visual calibration offset
     const adjustedTime = now - this.calibrationOffsetSec;
 

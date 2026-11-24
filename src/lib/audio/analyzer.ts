@@ -561,20 +561,28 @@ export function generateRhythmMapForDuration(
 
   while (t < duration - 1.0) {
     const stage = t < star1End ? 1 : t < star2End ? 2 : 3;
-    // Escalating rhythm frequency per stage
-    const step = stage === 1 ? beatInterval * 1.5 : stage === 2 ? beatInterval : beatInterval * 0.75;
-    
-    // Lane distribution
-    const allowedLanes = stage === 1 ? [0, 1, 2] : [0, 1, 2, 3];
+    // True musical beat subdivisions (1x quarter-note pulse + 0.5x eighth-note syncopation)
+    // so every tile lands squarely on the song's beat grid.
+    let step: number;
+    if (stage === 1) {
+      step = beatInterval;
+    } else if (stage === 2) {
+      step = noteIndex % 4 === 2 || noteIndex % 4 === 3 ? beatInterval * 0.5 : beatInterval;
+    } else {
+      step = noteIndex % 2 === 1 ? beatInterval * 0.5 : beatInterval * 0.75;
+    }
+
+    // All 4 lanes active for natural piano/guitar finger flow
+    const allowedLanes = [0, 1, 2, 3];
     let lane = (lastLane + 1) % allowedLanes.length;
     if (noteIndex % 3 === 0) {
       lane = (lastLane + 2) % allowedLanes.length;
     }
     lastLane = lane;
 
-    // Introduce regular sustained long tiles
-    const isLong = noteIndex > 0 && noteIndex % 6 === 0;
-    const sustainDur = isLong ? Math.min(1.8, Math.max(0.6, Math.round(step * 1.4 * 10) / 10)) : undefined;
+    // Introduce regular sustained long tiles (never on note 0)
+    const isLong = noteIndex > 0 && noteIndex % 6 === 0 && step >= beatInterval;
+    const sustainDur = isLong ? Math.min(1.8, Math.max(0.6, Math.round(beatInterval * 1.5 * 10) / 10)) : undefined;
 
     notes.push({
       id: `note-stream-${noteIndex}-${t.toFixed(3)}`,
@@ -589,7 +597,7 @@ export function generateRhythmMapForDuration(
     });
 
     noteIndex++;
-    t += step;
+    t += isLong && sustainDur ? sustainDur + beatInterval * 0.5 : step;
   }
 
   // Ensure minimum total notes

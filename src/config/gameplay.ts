@@ -90,13 +90,13 @@ export const GAMEPLAY_CONFIG = {
 
   // Visual & Fall timing
   // Time ahead of hit point that notes become visible and start falling down lane
-  APPROACH_TIME_SECONDS: 2.2, // 2.2s for relaxed, readable, musical approach
+  APPROACH_TIME_SECONDS: 1.75, // Crisp, musical arcade fall speed
 
   // Dynamic approach times based on song progression and energy
   DYNAMIC_APPROACH_TIMES: {
-    STAR_1: 2.2,  // Star 1 (0-33%): Calm, accessible entry
-    STAR_2: 1.85, // Star 2 (33-66%): Steady rhythmic groove
-    STAR_3: 1.55, // Star 3 (66-100%): Lively arcade pace, comfortable to read and tap
+    STAR_1: 1.75, // Star 1 (0-33%): Lively, responsive entry matched to beat pulse
+    STAR_2: 1.45, // Star 2 (33-66%): Energetic rhythmic groove
+    STAR_3: 1.20, // Star 3 (66-100%): Fast, exciting arcade climax
   },
 
   // Long (Sustained) Tile Mechanics

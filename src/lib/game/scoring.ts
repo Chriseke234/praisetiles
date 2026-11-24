@@ -244,9 +244,11 @@ export function getDynamicApproachTime(currentTime: number, duration: number, es
     }
   }
 
-  // Modulate slightly based on BPM if detected (faster tempo = faster tiles)
-  if (estimatedBpm && estimatedBpm > 130) {
-    return Math.max(1.0, baseTime - 0.1);
+  // Modulate fall speed proportionally to the song's detected BPM (around a 115 BPM reference)
+  // so faster songs fall faster in lockstep with the rhythm and slower songs match their groove.
+  if (typeof estimatedBpm === 'number' && estimatedBpm > 0) {
+    const tempoScale = Math.min(1.12, Math.max(0.82, 115 / estimatedBpm));
+    return Math.max(0.95, Math.round(baseTime * tempoScale * 100) / 100);
   }
   return baseTime;
 }

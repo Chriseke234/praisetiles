@@ -38,6 +38,11 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
 
   public setVideoId(videoId: string): void {
     this.videoId = videoId;
+    if (this.player && this.isReady && typeof this.player.cueVideoById === 'function') {
+      try {
+        this.player.cueVideoById(videoId);
+      } catch {}
+    }
   }
 
   public getVideoId(): string | null {
@@ -98,6 +103,12 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
     }
 
     if (this.player && this.isReady) {
+      if (this.videoId && typeof this.player.cueVideoById === 'function') {
+        try {
+          this.player.cueVideoById(this.videoId);
+          this.duration = this.player.getDuration() || this.duration || 0;
+        } catch {}
+      }
       return;
     }
 
@@ -106,6 +117,11 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
     return new Promise<void>((resolve, reject) => {
       try {
         let container = document.getElementById(this.containerId);
+        // If container already is an iframe from a prior instance, remove it so a clean fresh container is initialized
+        if (container && container.tagName.toLowerCase() === 'iframe') {
+          container.parentNode?.removeChild(container);
+          container = null;
+        }
         if (!container) {
           container = document.createElement('div');
           container.id = this.containerId;
@@ -138,7 +154,7 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
           events: {
             onReady: () => {
               this.isReady = true;
-              this.duration = this.player.getDuration() || 0;
+              this.duration = this.player.getDuration() || this.duration || 0;
               try {
                 this.player.unMute?.();
                 this.player.setVolume(Math.round(this.volume * 100));
@@ -154,6 +170,11 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
                   this.onEndedCallback();
                 }
               } else if (event.data === 1) {
+                // Ensure audio is unmuted and volume synchronized when stream transitions to playing
+                try {
+                  this.player.unMute?.();
+                  this.player.setVolume(Math.round(this.volume * 100));
+                } catch {}
                 // Lock clock directly to YouTube's actual audio timestamp the instant audio begins
                 if (this.player && typeof this.player.getCurrentTime === 'function') {
                   const t = this.player.getCurrentTime();

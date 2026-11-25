@@ -89,10 +89,16 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
 
   /**
    * Initializes the YouTube player inside container element.
+   * Conforms to Chromium Autoplay policies: container is attached with non-zero dimensions
+   * and placed behind the viewport with pointer-events: none so sound is never suppressed.
    */
   public async initialize(containerElementId?: string): Promise<void> {
     if (containerElementId) {
       this.containerId = containerElementId;
+    }
+
+    if (this.player && this.isReady) {
+      return;
     }
 
     await this.loadYouTubeApi();
@@ -104,18 +110,20 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
           container = document.createElement('div');
           container.id = this.containerId;
           container.style.position = 'fixed';
-          container.style.top = '-9999px';
-          container.style.left = '-9999px';
-          container.style.width = '1px';
-          container.style.height = '1px';
-          container.style.opacity = '0';
+          container.style.bottom = '0px';
+          container.style.right = '0px';
+          container.style.width = '200px';
+          container.style.height = '200px';
+          container.style.opacity = '0.001';
           container.style.pointerEvents = 'none';
+          container.style.zIndex = '-999';
+          container.style.overflow = 'hidden';
           document.body.appendChild(container);
         }
 
         this.player = new window.YT.Player(this.containerId, {
-          height: '1',
-          width: '1',
+          height: '200',
+          width: '200',
           videoId: this.videoId,
           playerVars: {
             playsinline: 1,
@@ -131,7 +139,10 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
             onReady: () => {
               this.isReady = true;
               this.duration = this.player.getDuration() || 0;
-              this.player.setVolume(Math.round(this.volume * 100));
+              try {
+                this.player.unMute?.();
+                this.player.setVolume(Math.round(this.volume * 100));
+              } catch {}
               resolve();
             },
             onStateChange: (event: any) => {
@@ -180,6 +191,22 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
     });
   }
 
+  public isContextSuspended(): boolean {
+    return Boolean(this.player && !this.isPlaying);
+  }
+
+  public async resumeContext(): Promise<boolean> {
+    if (this.player && typeof this.player.playVideo === 'function') {
+      try {
+        this.player.unMute?.();
+        this.player.setVolume?.(Math.round(this.volume * 100));
+        this.player.playVideo();
+        return true;
+      } catch {}
+    }
+    return false;
+  }
+
   /**
    * Begins playback from offset (seconds).
    * Keeps `isPlaying = false` until YouTube confirms PLAYING (state 1) so tiles
@@ -197,6 +224,10 @@ export class YouTubeAudioPlayer implements PlayableAudioClock {
       this.lastPolledTimestamp = performance.now();
       // Do NOT advance clock while buffering — onStateChange(1) or poll loop will flip isPlaying = true
       this.isPlaying = false;
+      try {
+        this.player.unMute?.();
+        this.player.setVolume?.(Math.round(this.volume * 100));
+      } catch {}
       if (offset > 0) {
         this.player.seekTo(offset, true);
       }

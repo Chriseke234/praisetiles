@@ -78,6 +78,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   const isWaitingForStart = startCountdown !== null;
   const hasStartedRef = useRef<boolean>(false);
   const lastRenderedTimeRef = useRef<number>(initialStartTime);
+  const [isAudioMutedByPolicy, setIsAudioMutedByPolicy] = useState<boolean>(false);
 
   const [failedResult, setFailedResult] = useState<RunResult | null>(null);
   const [scoreState, setScoreState] = useState<ScoreState>(createInitialScoreState);
@@ -214,6 +215,22 @@ export const GameContainer: React.FC<GameContainerProps> = ({
     };
   }, [initEngine, audioPlayer]);
 
+  // Ensure audio hardware is active and synchronized
+  useEffect(() => {
+    audioPlayer.setVolume(volume);
+  }, [volume, audioPlayer]);
+
+  // Audio Context Resumption Helper on any user interaction
+  const ensureAudioPlaying = useCallback(() => {
+    if (typeof audioPlayer.resumeContext === 'function') {
+      void audioPlayer.resumeContext().then((running) => {
+        if (running) setIsAudioMutedByPolicy(false);
+      });
+    } else if (typeof audioPlayer.ensureContext === 'function') {
+      void audioPlayer.ensureContext();
+    }
+  }, [audioPlayer]);
+
   // Rhythmic Auto-Kickoff:
   // Starts audio playback and tile flow smoothly at 60-120fps from initialStartTime.
   const startPlayback = useCallback(() => {
@@ -234,10 +251,22 @@ export const GameContainer: React.FC<GameContainerProps> = ({
       tilesViewRef.current?.updatePositions(initialStartTime, approach);
     }
 
+    // Explicit volume set right before starting playback
+    audioPlayer.setVolume(volume);
+
     void audioPlayer.play(initialStartTime, () => {
       engineRef.current?.handleCompletion();
+    }).then(() => {
+      if (typeof audioPlayer.isContextSuspended === 'function' && audioPlayer.isContextSuspended()) {
+        setIsAudioMutedByPolicy(true);
+      } else {
+        setIsAudioMutedByPolicy(false);
+      }
+    }).catch((err) => {
+      console.warn('[Audio Playback Error]', err);
+      setIsAudioMutedByPolicy(true);
     });
-  }, [initialStartTime, audioPlayer]);
+  }, [initialStartTime, audioPlayer, volume]);
 
   const handleStartGame = useCallback(() => {
     startPlayback();
@@ -362,6 +391,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
   // Direct Tile Interaction Handlers (Direct Touch & Click + Keyboard)
   const handleTilePointerDown = useCallback(
     (noteId: string, lane: number) => {
+      ensureAudioPlaying();
       if (isPaused || resumeCountdown !== null) return;
       if (startCountdown !== null) {
         startPlayback();
@@ -371,7 +401,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         engineRef.current.handleDirectTileDown(noteId, lane);
       }
     },
-    [isPaused, resumeCountdown, startCountdown, startPlayback]
+    [isPaused, resumeCountdown, startCountdown, startPlayback, ensureAudioPlaying]
   );
 
   const handleTilePointerUp = useCallback(
@@ -386,6 +416,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
 
   const handleLanePointerDown = useCallback(
     (lane: number) => {
+      ensureAudioPlaying();
       if (isPaused || resumeCountdown !== null) return;
       if (startCountdown !== null) {
         startPlayback();
@@ -395,7 +426,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({
         engineRef.current.handleLaneInput(lane);
       }
     },
-    [isPaused, resumeCountdown, startCountdown, startPlayback]
+    [isPaused, resumeCountdown, startCountdown, startPlayback, ensureAudioPlaying]
   );
 
   const handlePointerLeaveArea = useCallback(() => {
@@ -681,6 +712,19 @@ export const GameContainer: React.FC<GameContainerProps> = ({
             songTitle={map.songTitle}
             artist="Praise & Worship"
           />
+        )}
+
+        {/* Floating Tap-to-Unmute Banner if Browser Suspended Audio Autoplay */}
+        {isAudioMutedByPolicy && startCountdown === null && !isPaused && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+            <button
+              onClick={ensureAudioPlaying}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-black text-xs font-black shadow-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition"
+            >
+              <Volume2 className="w-4 h-4 shrink-0 stroke-[2.5]" />
+              <span>TAP TO ENABLE SOUND</span>
+            </button>
+          </div>
         )}
 
         {/* 3-2-1 Kickoff Auto-Countdown Overlay */}

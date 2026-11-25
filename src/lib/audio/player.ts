@@ -63,6 +63,28 @@ export class GameAudioPlayer {
     return this.ctx;
   }
 
+  public isContextSuspended(): boolean {
+    return Boolean(this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted'));
+  }
+
+  /**
+   * Resumes a suspended AudioContext when triggered by an active user gesture (e.g. tap on screen/lane).
+   * Returns true if context is running, false otherwise.
+   */
+  public async resumeContext(): Promise<boolean> {
+    if (!this.ctx) {
+      await this.ensureContext();
+    }
+    if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+      try {
+        await this.ctx.resume();
+      } catch {
+        // Strict browser autoplay policy check
+      }
+    }
+    return Boolean(this.ctx && this.ctx.state === 'running');
+  }
+
   public setBuffer(buffer: AudioBuffer): void {
     this.buffer = buffer;
   }

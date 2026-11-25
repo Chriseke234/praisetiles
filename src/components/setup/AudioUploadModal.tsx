@@ -199,17 +199,69 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
     setAuditionTrackId(track.id);
   };
 
-  // Select search track -> resolve full-length track via YouTube engine, or fallback to preview
+  // Select search track -> prioritize pristine decoded audio stream via WebAudio, fallback to YouTube
   const handleSelectSearchTrack = async (track: SearchTrack) => {
     stopAudition();
     setErrorMessage(null);
     setIsProcessing(true);
-    setProcessingStatus(`Finding full performance audio for "${track.title}"...`);
+    setProcessingStatus(`Loading performance audio for "${track.title}"...`);
 
     const title = `${track.title} - ${track.artist}`;
 
-    // 1. PRIMARY: Attempt to resolve full-length track on YouTube / YouTube Music
+    // 1. PRIMARY: High-Fidelity Audio Stream via Web Audio API (Guaranteed Sound & Beat-Accurate Transients)
+    if (track.previewUrl) {
+      try {
+        setProcessingStatus('Loading audio stream via secure audio pipeline...');
+        const ctx = await audioPlayer.ensureContext();
+
+        // Proxy via backend to prevent browser CORS blocks
+        const proxyUrl = track.previewUrl.startsWith('http')
+          ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
+          : track.previewUrl;
+
+        let response: Response | null = null;
+        try {
+          const res = await fetch(proxyUrl);
+          if (res.ok) {
+            response = res;
+          }
+        } catch {
+          // Non-blocking fallback to direct fetch
+        }
+
+        if (!response || !response.ok) {
+          response = await fetch(track.previewUrl);
+        }
+
+        if (response && response.ok) {
+          setProcessingStatus('Decoding audio data for rhythm analysis...');
+          const arrayBuffer = await response.arrayBuffer();
+          const decodedBuffer = await decodeAudioDataCompat(ctx, arrayBuffer);
+
+          setProcessingStatus('Analyzing acoustic transients and generating 4-lane chart...');
+          await new Promise((r) => setTimeout(r, 100));
+
+          const map = generateRhythmMapFromAudio(decodedBuffer, title);
+
+          audioPlayer.setBuffer(decodedBuffer);
+          setIsProcessing(false);
+
+          if (skipPreview && onQuickPlay) {
+            onQuickPlay(decodedBuffer, map, title);
+          } else {
+            onAudioReady(decodedBuffer, map, title);
+          }
+          return;
+        }
+      } catch (streamErr) {
+        console.warn('[Direct Audio Stream Warning]', streamErr);
+        // Continue to YouTube fallback below
+      }
+    }
+
+    // 2. SECONDARY FALLBACK: Resolve via YouTube Engine if preview stream is unavailable
     try {
+      setProcessingStatus(`Locating YouTube audio for "${track.title}"...`);
       const searchParam = encodeURIComponent(`${track.title} ${track.artist}`);
       const ytRes = await fetch(`/api/music/youtube?q=${searchParam}`);
       const ytData = await ytRes.json();
@@ -218,37 +270,14 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
         const videoId = ytData.videoId || ytData.track?.videoId;
         const durationSec = Math.max(90, track.durationSec || ytData.durationSec || 180);
 
-        // Detect real song BPM from the 30s audio preview so tiles match the track's actual tempo
-        let detectedBpm = 120;
-        if (track.previewUrl) {
-          try {
-            setProcessingStatus(`Analyzing real tempo for "${track.title}"...`);
-            const proxyUrl = track.previewUrl.startsWith('http')
-              ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
-              : track.previewUrl;
-            const previewRes = await fetch(proxyUrl);
-            if (previewRes.ok) {
-              const arrBuf = await previewRes.arrayBuffer();
-              const ctx = await audioPlayer.ensureContext();
-              const decodedPreview = await decodeAudioDataCompat(ctx, arrBuf);
-              const analyzedPreview = await generateRhythmMapFromAudio(decodedPreview, title);
-              const est = analyzedPreview.metrics?.estimatedBpm;
-              if (typeof est === 'number' && est >= 65 && est <= 180) {
-                detectedBpm = Math.round(est);
-              }
-            }
-          } catch {
-            // Non-blocking: fall back to 120 BPM if preview cannot be decoded
-          }
-        }
-
-        setProcessingStatus(`Initializing full YouTube audio (${detectedBpm} BPM)...`);
+        setProcessingStatus(`Initializing YouTube player (${videoId})...`);
         const ytPlayer = new YouTubeAudioPlayer(videoId);
+        await ytPlayer.initialize();
 
         setProcessingStatus('Generating beat-aligned 4-lane chart...');
         await new Promise((r) => setTimeout(r, 80));
 
-        const map = generateRhythmMapForDuration(title, durationSec, detectedBpm);
+        const map = generateRhythmMapForDuration(title, durationSec, 120);
         setIsProcessing(false);
 
         if (skipPreview && onQuickPlayYouTube) {
@@ -259,62 +288,13 @@ export const AudioUploadModal: React.FC<AudioUploadModalProps> = ({
         return;
       }
     } catch {
-      // Non-blocking fallback to preview stream below
+      // Non-blocking
     }
 
-    // 2. FALLBACK: Stream 30s preview audio stream via audio proxy
-    try {
-      setProcessingStatus('Loading preview audio stream...');
-      const ctx = await audioPlayer.ensureContext();
-
-      // Proxy via backend to prevent browser CORS blocks ("Failed to fetch")
-      const proxyUrl = track.previewUrl.startsWith('http')
-        ? `/api/music/proxy?url=${encodeURIComponent(track.previewUrl)}`
-        : track.previewUrl;
-
-      let response: Response | null = null;
-      try {
-        const res = await fetch(proxyUrl);
-        if (res.ok) {
-          response = res;
-        }
-      } catch {
-        // Fallback to direct fetch
-      }
-
-      if (!response || !response.ok) {
-        response = await fetch(track.previewUrl);
-      }
-
-      if (!response.ok) {
-        throw new Error('Failed to download preview audio stream from music catalog.');
-      }
-
-      setProcessingStatus('Decoding audio data for rhythm analysis...');
-      const arrayBuffer = await response.arrayBuffer();
-      const decodedBuffer = await decodeAudioDataCompat(ctx, arrayBuffer);
-
-      setProcessingStatus('Analyzing acoustic transients and generating 4-lane chart...');
-      await new Promise((r) => setTimeout(r, 120));
-
-      const map = generateRhythmMapFromAudio(decodedBuffer, title);
-
-      audioPlayer.setBuffer(decodedBuffer);
-      setIsProcessing(false);
-
-      if (skipPreview && onQuickPlay) {
-        onQuickPlay(decodedBuffer, map, title);
-      } else {
-        onAudioReady(decodedBuffer, map, title);
-      }
-    } catch (err: any) {
-      setIsProcessing(false);
-      setErrorMessage(
-        err.message?.includes('Failed to fetch')
-          ? 'Network error: Unable to fetch audio stream. Please check your internet connection or try another song.'
-          : err.message || 'Error processing streaming audio track.'
-      );
-    }
+    setIsProcessing(false);
+    setErrorMessage(
+      'Unable to load audio stream for this song. Please try another track or upload an MP3/WAV file.'
+    );
   };
 
   // YouTube track resolution

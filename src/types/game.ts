@@ -112,4 +112,6 @@ export interface PlayableAudioClock {
   getDuration(): number;
   setVolume(vol: number): void;
   ensureContext?(): Promise<any>;
+  isContextSuspended?(): boolean;
+  resumeContext?(): Promise<boolean>;
 }

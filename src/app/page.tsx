@@ -59,6 +59,7 @@ function PraiseTilesGame() {
 
   // Handle successful audio load and analysis
   const handleAudioReady = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
+    audioPlayer.setBuffer(buffer);
     setActiveAudioPlayer(audioPlayer);
     setAudioBuffer(buffer);
     setRhythmMap(map);
@@ -68,10 +69,14 @@ function PraiseTilesGame() {
 
   // Handle Quick Play (smooth transition with loading feedback)
   const handleQuickPlay = (buffer: AudioBuffer, map: RhythmMap, title: string) => {
+    audioPlayer.setBuffer(buffer);
     setActiveAudioPlayer(audioPlayer);
     setAudioBuffer(buffer);
     setRhythmMap(map);
     setSongTitle(title);
+    if (typeof audioPlayer.ensureContext === 'function') {
+      void audioPlayer.ensureContext().catch(() => {});
+    }
     setIsPreparingPerformance(true);
     setTimeout(() => {
       setIsPreparingPerformance(false);
@@ -94,6 +99,9 @@ function PraiseTilesGame() {
     setAudioBuffer(null);
     setRhythmMap(map);
     setSongTitle(title);
+    if (typeof ytPlayer.ensureContext === 'function') {
+      void ytPlayer.ensureContext().catch(() => {});
+    }
     setIsPreparingPerformance(true);
     setTimeout(() => {
       setIsPreparingPerformance(false);
@@ -101,9 +109,16 @@ function PraiseTilesGame() {
     }, 600);
   };
 
-  // Start gameplay with smooth arena loading transition
+  // Start gameplay with smooth arena loading transition and guaranteed synchronous audio unlock
   const handleStartGame = () => {
     if (rhythmMap) {
+      // Synchronously unlock audio context on direct user gesture before timers run
+      if (typeof activeAudioPlayer.ensureContext === 'function') {
+        void activeAudioPlayer.ensureContext().catch(() => {});
+      }
+      if (audioBuffer && activeAudioPlayer === audioPlayer) {
+        audioPlayer.setBuffer(audioBuffer);
+      }
       setIsPreparingPerformance(true);
       setTimeout(() => {
         setIsPreparingPerformance(false);
@@ -138,6 +153,12 @@ function PraiseTilesGame() {
   // Instant retry reusing existing audio buffer/stream and rhythm map
   const handleRetry = () => {
     if (rhythmMap) {
+      if (typeof activeAudioPlayer.ensureContext === 'function') {
+        void activeAudioPlayer.ensureContext().catch(() => {});
+      }
+      if (audioBuffer && activeAudioPlayer === audioPlayer) {
+        audioPlayer.setBuffer(audioBuffer);
+      }
       setView('PLAYING');
     } else {
       setView('UPLOAD');
